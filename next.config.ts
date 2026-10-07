@@ -1,20 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   experimental: {
     agentFeedback: true,
+    cpus: 2,
   },
   cacheComponents: true,
   partialPrefetching: true,
   reactCompiler: true,
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
+  async rewrites() {
+    const api = process.env.NEST_API_URL ?? "http://localhost:4000";
+		return [
+			{ source: "/profile/avatars/:id", destination: `${api}/api/users/:id/avatar` },
+			{ source: "/api/:path*", destination: `${api}/api/:path*` },
+		];
   },
 };
 

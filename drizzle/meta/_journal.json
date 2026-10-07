@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791341733416,
+      "tag": "0000_youthful_deadpool",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791341829171,
+      "tag": "0001_redundant_nehzno",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791342018811,
+      "tag": "0002_wonderful_master_chief",
+      "breakpoints": true
+    }
+  ]
+}
