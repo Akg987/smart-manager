@@ -2,20 +2,85 @@
 import Link from "next/link";
 import { AuthFrame, DemoForm } from "@/app/ui/auth-form";
 
-export const metadata: Metadata = { title: "Ø«Ø¨Øª Ù†Ø§Ù…", description: "Ø³Ø§Ø®Øª Ø­Ø³Ø§Ø¨ Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¯Ø± Ø§Ø³Ù…Ø§Ø±Øª Ù…Ù†ÛŒØ¬Ø±" };
+export const metadata: Metadata = {
+  title: "ثبت نام",
+  description: "ساخت حساب کاربری در اسمارت منیجر",
+};
 
 export default function RegisterPage() {
-  return <AuthFrame title="Ø«Ø¨Øª Ù†Ø§Ù…" heading="Ø«Ø¨Øª Ù†Ø§Ù…" subheading="Ø¨Ø±Ø§ÛŒ Ø³Ø§Ø®Øª Ø­Ø³Ø§Ø¨ Ú©Ø§Ø±Ø¨Ø±ÛŒØŒ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø²ÛŒØ± Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.">
-    <DemoForm fields={[
-      { name: "first_name", label: "Ù†Ø§Ù…", placeholder: "Ù†Ø§Ù… Ø®ÙˆØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯", required: true },
-      { name: "last_name", label: "Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ", placeholder: "Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ Ø®ÙˆØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯", required: true },
-      { name: "birth_date", label: "ØªØ§Ø±ÛŒØ® ØªÙˆÙ„Ø¯", type: "date", placeholder: "Û±Û´Û°Ûµ/Û°Û±/Û°Û±", required: true },
-      { name: "national_code", label: "Ú©Ø¯ Ù…Ù„ÛŒ", placeholder: "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹", required: true },
-      { name: "address", label: "Ø¢Ø¯Ø±Ø³", type: "textarea", placeholder: "Ù†Ø´Ø§Ù†ÛŒ Ú©Ø§Ù…Ù„ Ù…Ø­Ù„ Ø³Ú©ÙˆÙ†Øª", required: true, full: true },
-      { name: "mobile", label: "Ø´Ù…Ø§Ø±Ù‡ Ù…ÙˆØ¨Ø§ÛŒÙ„", type: "tel", placeholder: "09123456789", hint: "Ø§ÛŒÙ† Ø´Ù…Ø§Ø±Ù‡ØŒ Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø´Ù…Ø§ Ø¨Ø±Ø§ÛŒ ÙˆØ±ÙˆØ¯ Ø®ÙˆØ§Ù‡Ø¯ Ø¨ÙˆØ¯.", required: true, full: true },
-      { name: "password", label: "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±", type: "password", placeholder: "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ø®ÙˆØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯", hint: "Ø­Ø¯Ø§Ù‚Ù„ Û¸ Ú©Ø§Ø±Ø§Ú©ØªØ±ØŒ Ø´Ø§Ù…Ù„ Ø­Ø±Ù Ùˆ Ø¹Ø¯Ø¯.", required: true },
-      { name: "password_confirmation", label: "ØªÚ©Ø±Ø§Ø± Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±", type: "password", placeholder: "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ø±Ø§ Ø¯ÙˆØ¨Ø§Ø±Ù‡ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯", required: true },
-    ]} submitLabel="Ø«Ø¨Øª Ù†Ø§Ù…" endpoint="/api/auth/register" redirectTo="/approval-pending" />
-    <div className="form-note-s2 text-center pt-2">Ø­Ø³Ø§Ø¨ Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¯Ø§Ø±ÛŒØ¯ØŸ <Link href="/login">ÙˆØ§Ø±Ø¯ Ø´ÙˆÛŒØ¯</Link></div>
-  </AuthFrame>;
+  return (
+    <AuthFrame
+      title="ثبت نام"
+      heading="ثبت نام"
+      subheading="برای ساخت حساب کاربری، اطلاعات زیر را تکمیل کنید."
+    >
+      <DemoForm
+        fields={[
+          {
+            name: "first_name",
+            label: "نام",
+            placeholder: "نام خود را وارد کنید",
+            required: true,
+          },
+          {
+            name: "last_name",
+            label: "نام خانوادگی",
+            placeholder: "نام خانوادگی خود را وارد کنید",
+            required: true,
+          },
+          {
+            name: "birth_date",
+            label: "تاریخ تولد",
+            type: "date",
+            placeholder: "۱۴۰۵/۰۱/۰۱",
+            required: true,
+          },
+          {
+            name: "national_code",
+            label: "کد ملی",
+            placeholder: "۰۱۲۳۴۵۶۷۸۹",
+            required: true,
+          },
+          {
+            name: "address",
+            label: "آدرس",
+            type: "textarea",
+            placeholder: "نشانی کامل محل سکونت",
+            required: true,
+            full: true,
+          },
+          {
+            name: "mobile",
+            label: "شماره موبایل",
+            type: "tel",
+            placeholder: "09123456789",
+            hint: "این شماره، نام کاربری شما برای ورود خواهد بود.",
+            required: true,
+            full: true,
+          },
+          {
+            name: "password",
+            label: "رمز عبور",
+            type: "password",
+            placeholder: "رمز عبور خود را وارد کنید",
+            hint: "حداقل ۸ کاراکتر، شامل حرف و عدد.",
+            required: true,
+          },
+          {
+            name: "password_confirmation",
+            label: "تکرار رمز عبور",
+            type: "password",
+            placeholder: "رمز عبور را دوباره وارد کنید",
+            required: true,
+          },
+        ]}
+        submitLabel="ثبت نام"
+        endpoint="/api/auth/register"
+        redirectTo="/approval-pending"
+      />
+      <div className="form-note-s2 text-center pt-2">
+        حساب کاربری دارید؟ <Link href="/login">وارد شوید</Link>
+      </div>
+    </AuthFrame>
+  );
 }

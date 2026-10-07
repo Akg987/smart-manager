@@ -2,10 +2,34 @@
 import Link from "next/link";
 import { AuthFrame, DemoForm } from "@/app/ui/auth-form";
 
-export const metadata: Metadata = { title: "Ø¨Ø§Ø²ÛŒØ§Ø¨ÛŒ Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±" };
+export const metadata: Metadata = { title: "بازیابی رمز عبور" };
 
 export default function ForgotPasswordPage() {
-  return <AuthFrame title="Ø¨Ø§Ø²ÛŒØ§Ø¨ÛŒ Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±" heading="Ø¨Ø§Ø²ÛŒØ§Ø¨ÛŒ Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±" subheading="Ø´Ù…Ø§Ø±Ù‡ Ù…ÙˆØ¨Ø§ÛŒÙ„ Ø­Ø³Ø§Ø¨ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯. Ø§Ú¯Ø± Ø­Ø³Ø§Ø¨ÛŒ Ø¨Ø§ Ø§ÛŒÙ† Ø´Ù…Ø§Ø±Ù‡ ÙˆØ¬ÙˆØ¯ Ø¯Ø§Ø´ØªÙ‡ Ø¨Ø§Ø´Ø¯ØŒ ÛŒÚ© Ú©Ø¯ ÛŒÚ©Ø¨Ø§Ø±Ù…ØµØ±Ù Ø¨Ø±Ø§ÛŒ Ø¢Ù† Ø§Ø±Ø³Ø§Ù„ Ù…ÛŒâ€ŒØ´ÙˆØ¯." footnote={<>Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ø±Ø§ Ø¨Ù‡ Ø®Ø§Ø·Ø± Ø¯Ø§Ø±ÛŒØ¯ØŸ <Link href="/login">Ø¨Ø§Ø²Ú¯Ø´Øª Ø¨Ù‡ ÙˆØ±ÙˆØ¯</Link></>}>
-    <DemoForm fields={[{ name: "mobile", label: "Ø´Ù…Ø§Ø±Ù‡ Ù…ÙˆØ¨Ø§ÛŒÙ„", type: "tel", placeholder: "09123456789", required: true }]} submitLabel="Ø§Ø±Ø³Ø§Ù„ Ú©Ø¯ ØªØ£ÛŒÛŒØ¯" endpoint="/api/auth/password-reset/request" redirectTo="/reset-password" />
-  </AuthFrame>;
+  return (
+    <AuthFrame
+      title="بازیابی رمز عبور"
+      heading="بازیابی رمز عبور"
+      subheading="شماره موبایل حساب را وارد کنید. اگر حسابی با این شماره وجود داشته باشد، یک کد یکبارمصرف برای آن ارسال می‌شود."
+      footnote={
+        <>
+          رمز عبور را به خاطر دارید؟ <Link href="/login">بازگشت به ورود</Link>
+        </>
+      }
+    >
+      <DemoForm
+        fields={[
+          {
+            name: "mobile",
+            label: "شماره موبایل",
+            type: "tel",
+            placeholder: "09123456789",
+            required: true,
+          },
+        ]}
+        submitLabel="ارسال کد تأیید"
+        endpoint="/api/auth/password-reset/request"
+        redirectTo="/reset-password"
+      />
+    </AuthFrame>
+  );
 }
