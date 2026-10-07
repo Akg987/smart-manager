@@ -11,37 +11,40 @@ import { OrganizationsService } from "./organizations/organizations.service.js";
 import { SettingsService } from "./settings/settings.service.js";
 import { SmsIppanelHubService } from "./sms-ippanel-hub/sms-ippanel-hub.service.js";
 import { UsersService } from "./users/users.service.js";
+import { UsersRepository } from "./users/users.repository.js";
 import { DataService } from "./data/data.service.js";
 
 @Module({
-	imports: [DatabaseModule],
-	providers: [
-		AuthService,
-		UsersService,
-		AuthorizationService,
-		OrganizationsService,
-		SettingsService,
-		DashboardService,
-		InboxAuditService,
-		ModulePlatformService,
-		KpiManagementService,
-		CorrectiveActionsService,
-		SmsIppanelHubService,
-		DataService,
-	],
-	exports: [
-		AuthService,
-		UsersService,
-		AuthorizationService,
-		OrganizationsService,
-		SettingsService,
-		DashboardService,
-		InboxAuditService,
-		ModulePlatformService,
-		KpiManagementService,
-		CorrectiveActionsService,
-		SmsIppanelHubService,
-		DataService,
-	],
+  imports: [DatabaseModule],
+  providers: [
+    AuthService,
+    UsersRepository,
+    UsersService,
+    AuthorizationService,
+    OrganizationsService,
+    SettingsService,
+    DashboardService,
+    InboxAuditService,
+    ModulePlatformService,
+    KpiManagementService,
+    CorrectiveActionsService,
+    SmsIppanelHubService,
+    DataService,
+  ],
+  exports: [
+    AuthService,
+    UsersRepository,
+    UsersService,
+    AuthorizationService,
+    OrganizationsService,
+    SettingsService,
+    DashboardService,
+    InboxAuditService,
+    ModulePlatformService,
+    KpiManagementService,
+    CorrectiveActionsService,
+    SmsIppanelHubService,
+    DataService,
+  ],
 })
 export class ModulesServicesModule {}
