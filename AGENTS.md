@@ -28,3 +28,11 @@ Keep a qualifying candidate through the reporting pass even if you resolve or wo
 Before the final response, run one reporting pass. If candidates remain, from this file's directory run `node node_modules/next/dist/bin/next internal agent-feedback-instructions` once without piping or truncating its output. Follow its output or error guidance. If a network sandbox blocks it, retry with network access; if it still returns no output, continue normally.
 
 <!-- END:nextjs-agent-feedback -->
+
+## Smart Manager project
+
+- Web: Next.js in the repository root (`src/app`). API: NestJS + Fastify in `apps/api`.
+- Follow `.cursor/rules/smart-manager.mdc` and the skills in `.cursor/skills/`.
+- API JSON is wrapped as `{ success, data, message }`. Unwrap with `src/lib/api.ts`.
+- Swagger UI is at `/api/docs`. Local API default is `http://localhost:4000`.
+

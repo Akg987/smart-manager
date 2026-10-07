@@ -20,6 +20,9 @@
 
 # production
 /build
+/apps/api/dist
+/.tmp
+/api-start.log
 
 # misc
 .DS_Store
