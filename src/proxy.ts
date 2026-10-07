@@ -14,7 +14,7 @@ export async function proxy(request: NextRequest) {
 			authenticated = response.ok;
 		} catch { authenticated = false; }
 	}
-	if (protectedRoute && !authenticated) {
+	if (protectedRoute && !authenticated) {title="ØªØ£ÛŒÛŒØ¯ Ù‡ÙˆÛŒØª Ø¯ÙˆÙ…Ø±Ø­Ù„Ù‡â€ŒØ§ÛŒ" heading="Ú©Ø¯ ØªØ£ÛŒÛŒØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯" s
 		const login = new URL("/login", request.url);
 		login.searchParams.set("next", `${pathname}${search}`);
 		return NextResponse.redirect(login);
