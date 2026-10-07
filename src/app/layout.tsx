@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AppProviders } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,11 +19,13 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fa" dir="rtl" className="h-full antialiased">
-      <body className="has-rtl nk-body bg-lighter npc-general has-sidebar min-h-full">
-        {children}
+    <html lang="fa" dir="rtl" className="js h-full" suppressHydrationWarning>
+      <body className="has-rtl nk-body npc-general min-h-full">
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
