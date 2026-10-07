@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
 	let authenticated = false;
 	if (sessionCookie) {
 		try {
-			const api = process.env.NEST_API_URL ?? "http://localhost:4000";
+			const api = process.env.NEST_API_URL ?? "http://localhost:3000";
 			const response = await fetch(`${api}/api/auth/me`, { headers: { cookie: request.headers.get("cookie") ?? "" }, cache: "no-store" });
 			authenticated = response.ok;
 		} catch { authenticated = false; }
