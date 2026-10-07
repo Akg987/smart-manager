@@ -7,7 +7,9 @@ import * as schema from "./schema";
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-	throw new Error("DATABASE_URL must be set before the PostgreSQL client is used.");
+  throw new Error(
+    "DATABASE_URL must be set before the PostgreSQL client is used.",
+  );
 }
 
 const client = postgres(connectionString, { max: 10 });
