@@ -6,7 +6,12 @@ export type AppRequest = FastifyRequest & {
   cookies: Record<string, string | undefined>;
   currentUser?: typeof users.$inferSelect;
   authContext?: SmartManagerAuthContext;
-  uploadedFile?: { buffer: Buffer; filename: string; mimetype: string };
+  uploadedFile?: {
+    buffer: Buffer;
+    filename: string;
+    mimetype: string;
+    fields?: Record<string, string>;
+  };
 };
 
 export type AppReply = FastifyReply;

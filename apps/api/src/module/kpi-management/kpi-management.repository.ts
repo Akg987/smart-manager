@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import {
   BadRequestException,
   ForbiddenException,
@@ -5,7 +6,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { BaseRepository } from "../../common/repository/base.repository.js";
 import {
   and,
   asc,
@@ -18,49 +18,52 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { randomBytes } from "node:crypto";
+import {
+  auditLogs,
+  businessUnits,
+  companies,
+  correctiveActions,
+  correctiveAlerts,
+  departments,
+  inboxNotifications,
+  type JsonValue,
+  type KpiCheckinWorkflowStatus,
+  type KpiDirection,
+  type KpiHealth,
+  kpiManagementCheckins,
+  kpiImportRecords,
+  kpiImportRuns,
+  kpiManagementKpis,
+  kpiManagementKpiVersions,
+  kpiManagementValues,
+  kpiStudioOptions,
+  managementDecisions,
+  managementObservations,
+  memberships,
+  redFlagRules,
+  redFlags,
+  users,
+} from "../../../../../src/db/schema.js";
+import { BaseRepository } from "../../common/repository/base.repository.js";
 import {
   DRIZZLE_DB,
   type DrizzleDatabase,
 } from "../../database/database.token.js";
-import { AuthorizationService } from "../authorization/authorization.service.js";
 import {
   currentJalaliPeriod,
   jalaliPeriodSeries,
   normalizeJalaliPeriod,
 } from "../../shared/jalali.js";
-import {
-  auditLogs,
-  correctiveAlerts,
-  correctiveActions,
-  departments,
-  inboxNotifications,
-  kpiManagementCheckins,
-  kpiManagementKpis,
-  kpiManagementKpiVersions,
-  kpiManagementValues,
-  managementObservations,
-  managementDecisions,
-  redFlagRules,
-  memberships,
-  redFlags,
-  businessUnits,
-  companies,
-  kpiStudioOptions,
-  users,
-  type KpiCheckinWorkflowStatus,
-  type JsonValue,
-  type KpiDirection,
-  type KpiHealth,
-} from "../../../../../src/db/schema.js";
-import { canCloseRedFlag, canReviewCheckin } from "./kpi-workflow.js";
+import { AuthorizationService } from "../authorization/authorization.service.js";
 import {
   calculateAchievement,
   calculateKpiHealth,
   calculateKpiInput,
   validateReportedUnit,
 } from "./kpi-calculation.js";
+import { canCloseRedFlag, canReviewCheckin } from "./kpi-workflow.js";
 import { matchesRedFlagRule } from "./red-flag-engine.js";
+import type { KpiImportRow } from "./kpi-import-parser.js";
 
 @Injectable()
 export class KpiManagementRepository extends BaseRepository {
@@ -182,6 +185,363 @@ export class KpiManagementRepository extends BaseRepository {
     private readonly authorization: AuthorizationService,
   ) {
     super(db);
+  }
+
+  findImportKpisByCodes(codes: string[], companyId: bigint) {
+    if (codes.length === 0) return Promise.resolve([]);
+    return this.db
+      .select({
+        id: kpiManagementKpis.id,
+        code: kpiManagementKpis.code,
+        unit: kpiManagementKpis.unit,
+        inputMode: kpiManagementKpis.inputMode,
+        formulaType: kpiManagementKpis.formulaType,
+        version: kpiManagementKpis.version,
+        holdingId: kpiManagementKpis.holdingId,
+        branchId: kpiManagementKpis.branchId,
+        businessUnitId: kpiManagementKpis.businessUnitId,
+      })
+      .from(kpiManagementKpis)
+      .where(
+        and(
+          eq(kpiManagementKpis.companyId, companyId),
+          inArray(kpiManagementKpis.code, codes),
+          eq(kpiManagementKpis.active, true),
+          eq(kpiManagementKpis.status, "published"),
+        ),
+      );
+  }
+
+  listKpiImportRuns(actorId: bigint, companyId: bigint) {
+    return this.db
+      .select({
+        id: kpiImportRuns.id,
+        fileName: kpiImportRuns.fileName,
+        rowCount: kpiImportRuns.rowCount,
+        importedCount: kpiImportRuns.importedCount,
+        duplicateCount: kpiImportRuns.duplicateCount,
+        rejectedCount: kpiImportRuns.rejectedCount,
+        status: kpiImportRuns.status,
+        createdAt: kpiImportRuns.createdAt,
+      })
+      .from(kpiImportRuns)
+      .where(
+        and(
+          eq(kpiImportRuns.actorId, actorId),
+          eq(kpiImportRuns.companyId, companyId),
+        ),
+      )
+      .orderBy(desc(kpiImportRuns.createdAt))
+      .limit(50);
+  }
+
+  async importKpiRows(input: {
+    actorId: bigint;
+    companyId: bigint;
+    fileName: string;
+    rows: KpiImportRow[];
+    ipAddress: string | null;
+    userAgent: string | null;
+  }) {
+    if (input.rows.length === 0)
+      throw new BadRequestException("Import contains no valid rows.");
+    const company = await this.db.query.companies.findFirst({
+      where: eq(companies.id, input.companyId),
+    });
+    if (!company)
+      throw new NotFoundException("Active company not found.");
+    const actorContext = this.authorization.currentContext(input.actorId);
+    if (!actorContext)
+      throw new ForbiddenException("Permission denied.");
+    const fileName = input.fileName
+      .replace(/[\\/\u0000-\u001f]/g, "_")
+      .slice(-160);
+    const run = await this.db
+      .insert(kpiImportRuns)
+      .values({
+        holdingId: company.holdingId,
+        companyId: company.id,
+        actorId: input.actorId,
+        fileName,
+        rowCount: input.rows.length,
+        status: "failed",
+      })
+      .returning({ id: kpiImportRuns.id });
+    const runId = run[0].id;
+    const definitions = await this.findImportKpisByCodes(
+      [...new Set(input.rows.map((row) => row.kpiCode))],
+      input.companyId,
+    );
+    const definitionByCode = new Map(definitions.map((item) => [item.code, item]));
+    const permissionByKpiId = new Map<string, boolean>();
+    let importedCount = 0;
+    let duplicateCount = 0;
+    const rowResults: Array<{
+      rowNumber: number;
+      status: "imported" | "duplicate" | "rejected";
+      checkinId?: string;
+      message?: string;
+    }> = [];
+
+    for (const row of input.rows) {
+      const definition = definitionByCode.get(row.kpiCode);
+      const hasPermission = definition
+        ? (permissionByKpiId.has(definition.id.toString())
+            ? permissionByKpiId.get(definition.id.toString())
+            : await this.authorization.canAccessKpi(
+                input.actorId,
+                definition.id,
+                "kpi.submit",
+              )) ?? false
+        : false;
+      if (definition && !permissionByKpiId.has(definition.id.toString()))
+        permissionByKpiId.set(definition.id.toString(), hasPermission);
+      if (!definition || !hasPermission) {
+        rowResults.push({
+          rowNumber: row.rowNumber,
+          status: "rejected",
+          message: "KPI is unavailable for import in the active company.",
+        });
+        continue;
+      }
+
+      const normalizedSource = row.source.trim().toLowerCase();
+      const payloadHash = createHash("sha256")
+        .update(
+          JSON.stringify({
+            kpiId: definition.id.toString(),
+            source: normalizedSource,
+            externalId: row.externalId,
+            period: row.period,
+            value: row.value,
+            unit: row.unit,
+          }),
+        )
+        .digest("hex");
+      try {
+        const outcome = await this.db.transaction(async (tx) => {
+          const [kpi] = await tx
+            .select()
+            .from(kpiManagementKpis)
+            .where(
+              and(
+                eq(kpiManagementKpis.id, definition.id),
+                eq(kpiManagementKpis.companyId, input.companyId),
+                eq(kpiManagementKpis.active, true),
+                eq(kpiManagementKpis.status, "published"),
+              ),
+            )
+            .for("update")
+            .limit(1);
+          if (!kpi) return { status: "rejected" as const, message: "KPI is no longer published." };
+
+          const existingExternal = await tx.query.kpiImportRecords.findFirst({
+            where: and(
+              eq(kpiImportRecords.companyId, input.companyId),
+              eq(kpiImportRecords.source, normalizedSource),
+              eq(kpiImportRecords.externalId, row.externalId),
+            ),
+          });
+          if (existingExternal)
+            return existingExternal.payloadHash === payloadHash
+              ? { status: "duplicate" as const }
+              : { status: "rejected" as const, message: "External ID already exists with different data." };
+
+          const existingPeriod = await tx.query.kpiImportRecords.findFirst({
+            where: and(
+              eq(kpiImportRecords.companyId, input.companyId),
+              eq(kpiImportRecords.kpiId, kpi.id),
+              eq(kpiImportRecords.period, row.period),
+            ),
+          });
+          if (existingPeriod)
+            return { status: "rejected" as const, message: "This KPI period already has an imported value." };
+          const existingCheckin = await tx.query.kpiManagementCheckins.findFirst({
+            where: and(
+              eq(kpiManagementCheckins.kpiId, kpi.id),
+              eq(kpiManagementCheckins.period, row.period),
+            ),
+          });
+          if (existingCheckin)
+            return { status: "rejected" as const, message: "This KPI period already has a check-in." };
+          if (kpi.unit !== row.unit)
+            return { status: "rejected" as const, message: "Imported unit does not match the KPI unit; no currency conversion is applied." };
+          if (!["numeric", "percentage", "currency", "count", "ratio"].includes(kpi.inputMode))
+            return { status: "rejected" as const, message: "This KPI input mode cannot accept a single imported numeric value." };
+
+          let calculation;
+          try {
+            validateReportedUnit(kpi.unit, row.unit);
+            calculation = calculateKpiInput({
+              inputMode: kpi.inputMode,
+              actualValue: Number(row.value),
+              data: { actual: Number(row.value) },
+              inputOptions: [],
+              formulaType: kpi.formulaType,
+            });
+          } catch (error) {
+            return {
+              status: "rejected" as const,
+              message: error instanceof Error ? error.message : "Imported value is invalid.",
+            };
+          }
+          if (calculation.numericValue === null)
+            return { status: "rejected" as const, message: "Imported value is missing." };
+
+          const insertedRecord = await tx
+            .insert(kpiImportRecords)
+            .values({
+              runId,
+              holdingId: kpi.holdingId,
+              companyId: kpi.companyId,
+              branchId: kpi.branchId,
+              businessUnitId: kpi.businessUnitId,
+              kpiId: kpi.id,
+              externalId: row.externalId,
+              source: normalizedSource,
+              period: row.period,
+              value: row.value,
+              unit: row.unit,
+              payloadHash,
+              kpiVersion: kpi.version,
+            })
+            .onConflictDoNothing()
+            .returning({ id: kpiImportRecords.id });
+          if (insertedRecord.length === 0)
+            return { status: "rejected" as const, message: "A concurrent import already claimed this source record or KPI period." };
+
+          const submittedAt = new Date();
+          const dataState =
+            calculation.numericValue === 0
+              ? "zero"
+              : kpi.submissionDeadline &&
+                  submittedAt.toISOString().slice(0, 10) > kpi.submissionDeadline
+                ? "late"
+                : "valid";
+          const checkin = await tx
+            .insert(kpiManagementCheckins)
+            .values({
+              kpiId: kpi.id,
+              userId: input.actorId,
+              period: row.period,
+              status: "data_submitted",
+              dataJson: {
+                actual: calculation.value,
+                unit: kpi.unit,
+                dataState,
+                source: normalizedSource,
+                externalId: row.externalId,
+                importRunId: runId.toString(),
+                kpiVersion: kpi.version,
+              } as JsonValue,
+              actualValue: String(calculation.numericValue),
+              note: "Imported from external source.",
+              blockers: "",
+              submittedAt,
+              updatedAt: submittedAt,
+            })
+            .returning({ id: kpiManagementCheckins.id });
+          await tx
+            .update(kpiImportRecords)
+            .set({ checkinId: checkin[0].id })
+            .where(eq(kpiImportRecords.id, insertedRecord[0].id));
+          await tx.insert(auditLogs).values({
+            userId: input.actorId,
+            holdingId: kpi.holdingId,
+            companyId: kpi.companyId,
+            membershipId: BigInt(actorContext.membershipId),
+            actorName: "System",
+            action: "kpi.import.row",
+            subjectType: "KpiImportRecord",
+            subjectId: insertedRecord[0].id,
+            description: "KPI data row imported and submitted for review",
+            context: {
+              runId: runId.toString(),
+              checkinId: checkin[0].id.toString(),
+              kpiId: kpi.id.toString(),
+              period: row.period,
+              source: normalizedSource,
+              externalId: row.externalId,
+              version: kpi.version,
+              unit: kpi.unit,
+              value: row.value,
+              dataState,
+            },
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+          });
+          return { status: "imported" as const, checkinId: checkin[0].id.toString() };
+        });
+        if (outcome.status === "imported") importedCount += 1;
+        else if (outcome.status === "duplicate") duplicateCount += 1;
+        rowResults.push({ rowNumber: row.rowNumber, ...outcome });
+        const progressRejectedCount =
+          rowResults.length - importedCount - duplicateCount;
+        await this.db
+          .update(kpiImportRuns)
+          .set({
+            importedCount,
+            duplicateCount,
+            rejectedCount: progressRejectedCount,
+            status:
+              progressRejectedCount === 0
+                ? "completed"
+                : importedCount > 0 || duplicateCount > 0
+                  ? "partial"
+                  : "failed",
+          })
+          .where(eq(kpiImportRuns.id, runId));
+      } catch {
+        rowResults.push({
+          rowNumber: row.rowNumber,
+          status: "rejected",
+          message: "Import row conflicted with a concurrent update or database constraint.",
+        });
+      }
+    }
+
+    const rejectedCount = rowResults.length - importedCount - duplicateCount;
+    const status =
+      rejectedCount === 0
+        ? "completed"
+        : importedCount > 0 || duplicateCount > 0
+          ? "partial"
+          : "failed";
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(kpiImportRuns)
+        .set({ importedCount, duplicateCount, rejectedCount, status })
+        .where(eq(kpiImportRuns.id, runId));
+      const context = this.authorization.currentContext(input.actorId);
+      await tx.insert(auditLogs).values({
+        userId: input.actorId,
+        holdingId: company.holdingId,
+        companyId: company.id,
+        membershipId: context ? BigInt(context.membershipId) : null,
+        actorName: "System",
+        action: "kpi.import.completed",
+        subjectType: "KpiImportRun",
+        subjectId: runId,
+        description: "KPI data import run completed",
+        context: {
+          importedCount,
+          duplicateCount,
+          rejectedCount,
+          status,
+          rows: rowResults,
+        },
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+      });
+    });
+    return {
+      runId: runId.toString(),
+      status,
+      importedCount,
+      duplicateCount,
+      rejectedCount,
+      rows: rowResults,
+    };
   }
 
   async listStudioOptions(group: "input_mode" | "direction" | "frequency") {
@@ -1089,24 +1449,22 @@ export class KpiManagementRepository extends BaseRepository {
       .set({ status: "reviewed", updatedAt: new Date() })
       .where(eq(kpiManagementKpis.id, kpiId))
       .returning();
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: actorId,
-        holdingId: kpi.holdingId,
-        companyId: kpi.companyId,
-        membershipId: this.authorization.currentContext(actorId)
-          ? BigInt(this.authorization.currentContext(actorId)!.membershipId)
-          : null,
-        actorName: "System",
-        action: "kpi.definition.submitted",
-        subjectType: "KpiDefinition",
-        subjectId: kpiId,
-        description: "KPI definition submitted for review",
-        context: { companyId: kpi.companyId.toString(), version: kpi.version },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: actorId,
+      holdingId: kpi.holdingId,
+      companyId: kpi.companyId,
+      membershipId: this.authorization.currentContext(actorId)
+        ? BigInt(this.authorization.currentContext(actorId)!.membershipId)
+        : null,
+      actorName: "System",
+      action: "kpi.definition.submitted",
+      subjectType: "KpiDefinition",
+      subjectId: kpiId,
+      description: "KPI definition submitted for review",
+      context: { companyId: kpi.companyId.toString(), version: kpi.version },
+      ipAddress: null,
+      userAgent: null,
+    });
     return updated;
   }
 
@@ -1146,27 +1504,25 @@ export class KpiManagementRepository extends BaseRepository {
         .set({ status: "published", updatedAt: new Date() })
         .where(eq(kpiManagementKpis.id, kpiId))
         .returning();
-      await tx
-        .insert(auditLogs)
-        .values({
-          userId: actorId,
-          holdingId: kpi.holdingId,
-          companyId: kpi.companyId,
-          membershipId: this.authorization.currentContext(actorId)
-            ? BigInt(this.authorization.currentContext(actorId)!.membershipId)
-            : null,
-          actorName: "System",
-          action: "kpi.definition.published",
-          subjectType: "KpiDefinition",
-          subjectId: kpiId,
-          description: "KPI definition published",
-          context: {
-            companyId: kpi.companyId.toString(),
-            version: kpi.version,
-          },
-          ipAddress: null,
-          userAgent: null,
-        });
+      await tx.insert(auditLogs).values({
+        userId: actorId,
+        holdingId: kpi.holdingId,
+        companyId: kpi.companyId,
+        membershipId: this.authorization.currentContext(actorId)
+          ? BigInt(this.authorization.currentContext(actorId)!.membershipId)
+          : null,
+        actorName: "System",
+        action: "kpi.definition.published",
+        subjectType: "KpiDefinition",
+        subjectId: kpiId,
+        description: "KPI definition published",
+        context: {
+          companyId: kpi.companyId.toString(),
+          version: kpi.version,
+        },
+        ipAddress: null,
+        userAgent: null,
+      });
       return updated;
     });
   }
@@ -1471,27 +1827,25 @@ export class KpiManagementRepository extends BaseRepository {
               .returning()
           )[0];
       const actorContext = this.authorization.currentContext(input.userId);
-      await tx
-        .insert(auditLogs)
-        .values({
-          userId: input.userId,
-          holdingId: kpi.holdingId,
-          companyId: kpi.companyId,
-          membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
-          actorName: "System",
-          action: `kpi.checkin.${status}`,
-          subjectType: "KpiCheckin",
-          subjectId: checkin.id,
-          description: `KPI check-in ${status}`,
-          context: {
-            period,
-            holdingId: kpi.holdingId.toString(),
-            companyId: kpi.companyId.toString(),
-            kpiId: kpi.id.toString(),
-          },
-          ipAddress: null,
-          userAgent: null,
-        });
+      await tx.insert(auditLogs).values({
+        userId: input.userId,
+        holdingId: kpi.holdingId,
+        companyId: kpi.companyId,
+        membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
+        actorName: "System",
+        action: `kpi.checkin.${status}`,
+        subjectType: "KpiCheckin",
+        subjectId: checkin.id,
+        description: `KPI check-in ${status}`,
+        context: {
+          period,
+          holdingId: kpi.holdingId.toString(),
+          companyId: kpi.companyId.toString(),
+          kpiId: kpi.id.toString(),
+        },
+        ipAddress: null,
+        userAgent: null,
+      });
       return {
         checkin,
         dataState:
@@ -1734,33 +2088,31 @@ export class KpiManagementRepository extends BaseRepository {
                 source: "kpi_rule",
               })
               .returning();
-            await tx
-              .insert(auditLogs)
-              .values({
-                userId: input.actorId,
-                holdingId: kpi.holdingId,
-                companyId: kpi.companyId,
-                membershipId: this.authorization.currentContext(input.actorId)
-                  ? BigInt(
-                      this.authorization.currentContext(input.actorId)!
-                        .membershipId,
-                    )
-                  : null,
-                actorName: "System",
-                action: "kpi.red_flag.created",
-                subjectType: "RedFlag",
-                subjectId: flag.id,
-                description: "KPI rule created a red flag",
-                context: {
-                  kpiId: kpi.id.toString(),
-                  period: checkin.period,
-                  valueId: savedValue.id.toString(),
-                  severity,
-                  ruleId: matched?.id.toString() ?? null,
-                },
-                ipAddress: null,
-                userAgent: null,
-              });
+            await tx.insert(auditLogs).values({
+              userId: input.actorId,
+              holdingId: kpi.holdingId,
+              companyId: kpi.companyId,
+              membershipId: this.authorization.currentContext(input.actorId)
+                ? BigInt(
+                    this.authorization.currentContext(input.actorId)!
+                      .membershipId,
+                  )
+                : null,
+              actorName: "System",
+              action: "kpi.red_flag.created",
+              subjectType: "RedFlag",
+              subjectId: flag.id,
+              description: "KPI rule created a red flag",
+              context: {
+                kpiId: kpi.id.toString(),
+                period: checkin.period,
+                valueId: savedValue.id.toString(),
+                severity,
+                ruleId: matched?.id.toString() ?? null,
+              },
+              ipAddress: null,
+              userAgent: null,
+            });
           }
         }
       }
@@ -1768,37 +2120,35 @@ export class KpiManagementRepository extends BaseRepository {
       const auditedDataState = (
         checkin.dataJson as Record<string, unknown> | null
       )?.dataState;
-      await tx
-        .insert(auditLogs)
-        .values({
-          userId: input.actorId,
-          holdingId: kpi.holdingId,
-          companyId: kpi.companyId,
-          membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
-          actorName: "System",
-          action: `kpi.checkin.${input.decision}`,
-          subjectType: "KpiCheckin",
-          subjectId: checkin.id,
-          description: `KPI check-in ${input.decision}`,
-          context: {
-            kpiId: kpi.id.toString(),
-            period: checkin.period,
-            companyId: kpi.companyId.toString(),
-            note,
-            actualValue: checkin.actualValue,
-            targetValue: kpi.targetValue,
-            unit: kpi.unit,
-            reviewerUserId: input.actorId.toString(),
-            dataState:
-              input.decision === "approved"
-                ? typeof auditedDataState === "string"
-                  ? auditedDataState
-                  : "valid"
-                : "rejected",
-          },
-          ipAddress: null,
-          userAgent: null,
-        });
+      await tx.insert(auditLogs).values({
+        userId: input.actorId,
+        holdingId: kpi.holdingId,
+        companyId: kpi.companyId,
+        membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
+        actorName: "System",
+        action: `kpi.checkin.${input.decision}`,
+        subjectType: "KpiCheckin",
+        subjectId: checkin.id,
+        description: `KPI check-in ${input.decision}`,
+        context: {
+          kpiId: kpi.id.toString(),
+          period: checkin.period,
+          companyId: kpi.companyId.toString(),
+          note,
+          actualValue: checkin.actualValue,
+          targetValue: kpi.targetValue,
+          unit: kpi.unit,
+          reviewerUserId: input.actorId.toString(),
+          dataState:
+            input.decision === "approved"
+              ? typeof auditedDataState === "string"
+                ? auditedDataState
+                : "valid"
+              : "rejected",
+        },
+        ipAddress: null,
+        userAgent: null,
+      });
       return updated;
     });
   }
@@ -2357,22 +2707,20 @@ export class KpiManagementRepository extends BaseRepository {
         relatedKpiIds: related.map(String) as JsonValue,
       })
       .returning();
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: input.actorId,
-        holdingId: observation.holdingId,
-        companyId: observation.companyId,
-        membershipId: BigInt(context.membershipId),
-        actorName: "System",
-        action: "kpi.observation.created",
-        subjectType: "ManagementObservation",
-        subjectId: observation.id,
-        description: "Management observation created",
-        context: { companyId: context.companyId, period },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: input.actorId,
+      holdingId: observation.holdingId,
+      companyId: observation.companyId,
+      membershipId: BigInt(context.membershipId),
+      actorName: "System",
+      action: "kpi.observation.created",
+      subjectType: "ManagementObservation",
+      subjectId: observation.id,
+      description: "Management observation created",
+      context: { companyId: context.companyId, period },
+      ipAddress: null,
+      userAgent: null,
+    });
     return observation;
   }
 
@@ -2521,26 +2869,24 @@ export class KpiManagementRepository extends BaseRepository {
         source: "manual",
       })
       .returning();
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: input.actorId,
-        holdingId: scope.holdingId,
-        companyId: scope.companyId,
-        membershipId: BigInt(context.membershipId),
-        actorName: "System",
-        action: "kpi.red_flag.created",
-        subjectType: "RedFlag",
-        subjectId: flag.id,
-        description: "Management red flag created",
-        context: {
-          companyId: scope.companyId.toString(),
-          kpiId: input.kpiId?.toString() ?? null,
-          period,
-        },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: input.actorId,
+      holdingId: scope.holdingId,
+      companyId: scope.companyId,
+      membershipId: BigInt(context.membershipId),
+      actorName: "System",
+      action: "kpi.red_flag.created",
+      subjectType: "RedFlag",
+      subjectId: flag.id,
+      description: "Management red flag created",
+      context: {
+        companyId: scope.companyId.toString(),
+        kpiId: input.kpiId?.toString() ?? null,
+        period,
+      },
+      ipAddress: null,
+      userAgent: null,
+    });
     return flag;
   }
 
@@ -2655,26 +3001,24 @@ export class KpiManagementRepository extends BaseRepository {
       .where(eq(redFlags.id, flag.id))
       .returning();
     const actorContext = this.authorization.currentContext(input.actorId);
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: input.actorId,
-        holdingId: flag.holdingId,
-        companyId: flag.companyId,
-        membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
-        actorName: "System",
-        action: `kpi.red_flag.${input.status}`,
-        subjectType: "RedFlag",
-        subjectId: flag.id,
-        description: `Red flag ${input.status}`,
-        context: {
-          companyId: flag.companyId.toString(),
-          kpiId: flag.kpiId?.toString() ?? null,
-          suspectedCause: input.suspectedCause ?? flag.suspectedCause,
-        },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: input.actorId,
+      holdingId: flag.holdingId,
+      companyId: flag.companyId,
+      membershipId: actorContext ? BigInt(actorContext.membershipId) : null,
+      actorName: "System",
+      action: `kpi.red_flag.${input.status}`,
+      subjectType: "RedFlag",
+      subjectId: flag.id,
+      description: `Red flag ${input.status}`,
+      context: {
+        companyId: flag.companyId.toString(),
+        kpiId: flag.kpiId?.toString() ?? null,
+        suspectedCause: input.suspectedCause ?? flag.suspectedCause,
+      },
+      ipAddress: null,
+      userAgent: null,
+    });
     return updated;
   }
 
@@ -2786,26 +3130,24 @@ export class KpiManagementRepository extends BaseRepository {
         createdBy: input.actorId,
       })
       .returning();
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: input.actorId,
-        holdingId: rule.holdingId,
-        companyId: rule.companyId,
-        membershipId: BigInt(context.membershipId),
-        actorName: "System",
-        action: "kpi.red_flag_rule.created",
-        subjectType: "RedFlagRule",
-        subjectId: rule.id,
-        description: "Red flag rule created",
-        context: {
-          trigger: rule.trigger,
-          severity: rule.severity,
-          kpiId: rule.kpiId?.toString() ?? null,
-        },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: input.actorId,
+      holdingId: rule.holdingId,
+      companyId: rule.companyId,
+      membershipId: BigInt(context.membershipId),
+      actorName: "System",
+      action: "kpi.red_flag_rule.created",
+      subjectType: "RedFlagRule",
+      subjectId: rule.id,
+      description: "Red flag rule created",
+      context: {
+        trigger: rule.trigger,
+        severity: rule.severity,
+        kpiId: rule.kpiId?.toString() ?? null,
+      },
+      ipAddress: null,
+      userAgent: null,
+    });
     return rule;
   }
 
@@ -2846,22 +3188,20 @@ export class KpiManagementRepository extends BaseRepository {
       })
       .where(eq(redFlagRules.id, rule.id))
       .returning();
-    await this.db
-      .insert(auditLogs)
-      .values({
-        userId: input.actorId,
-        holdingId: rule.holdingId,
-        companyId: rule.companyId,
-        membershipId: context ? BigInt(context.membershipId) : null,
-        actorName: "System",
-        action: "kpi.red_flag_rule.updated",
-        subjectType: "RedFlagRule",
-        subjectId: rule.id,
-        description: "Red flag rule updated",
-        context: { enabled: updated.enabled, severity: updated.severity },
-        ipAddress: null,
-        userAgent: null,
-      });
+    await this.db.insert(auditLogs).values({
+      userId: input.actorId,
+      holdingId: rule.holdingId,
+      companyId: rule.companyId,
+      membershipId: context ? BigInt(context.membershipId) : null,
+      actorName: "System",
+      action: "kpi.red_flag_rule.updated",
+      subjectType: "RedFlagRule",
+      subjectId: rule.id,
+      description: "Red flag rule updated",
+      context: { enabled: updated.enabled, severity: updated.severity },
+      ipAddress: null,
+      userAgent: null,
+    });
     return updated;
   }
 
@@ -3020,28 +3360,26 @@ export class KpiManagementRepository extends BaseRepository {
             source: "kpi_rule",
           })
           .returning();
-        await tx
-          .insert(auditLogs)
-          .values({
-            userId: actorId,
-            holdingId: kpi.holdingId,
-            companyId: kpi.companyId,
-            membershipId: BigInt(context.membershipId),
-            actorName: "System",
-            action: "kpi.red_flag.created",
-            subjectType: "RedFlag",
-            subjectId: flag.id,
-            description: "Periodic KPI evaluation created a red flag",
-            context: {
-              ruleId: matched.id.toString(),
-              trigger: matched.trigger,
-              period,
-              dataState,
-              value: periodValue?.actualValue ?? null,
-            },
-            ipAddress: null,
-            userAgent: null,
-          });
+        await tx.insert(auditLogs).values({
+          userId: actorId,
+          holdingId: kpi.holdingId,
+          companyId: kpi.companyId,
+          membershipId: BigInt(context.membershipId),
+          actorName: "System",
+          action: "kpi.red_flag.created",
+          subjectType: "RedFlag",
+          subjectId: flag.id,
+          description: "Periodic KPI evaluation created a red flag",
+          context: {
+            ruleId: matched.id.toString(),
+            trigger: matched.trigger,
+            period,
+            dataState,
+            value: periodValue?.actualValue ?? null,
+          },
+          ipAddress: null,
+          userAgent: null,
+        });
       });
       created += 1;
     }
@@ -3127,27 +3465,25 @@ export class KpiManagementRepository extends BaseRepository {
             source: "kpi_rule",
           })
           .returning();
-        await tx
-          .insert(auditLogs)
-          .values({
-            userId: actorId,
-            holdingId: row.holdingId,
-            companyId: row.companyId,
-            membershipId: BigInt(context.membershipId),
-            actorName: "System",
-            action: "kpi.red_flag.created",
-            subjectType: "RedFlag",
-            subjectId: flag.id,
-            description: "Overdue action rule created a red flag",
-            context: {
-              actionId: row.action.id.toString(),
-              ruleId: matching.id.toString(),
-              trigger: matching.trigger,
-              dueAt: row.action.dueAt?.toISOString() ?? null,
-            },
-            ipAddress: null,
-            userAgent: null,
-          });
+        await tx.insert(auditLogs).values({
+          userId: actorId,
+          holdingId: row.holdingId,
+          companyId: row.companyId,
+          membershipId: BigInt(context.membershipId),
+          actorName: "System",
+          action: "kpi.red_flag.created",
+          subjectType: "RedFlag",
+          subjectId: flag.id,
+          description: "Overdue action rule created a red flag",
+          context: {
+            actionId: row.action.id.toString(),
+            ruleId: matching.id.toString(),
+            trigger: matching.trigger,
+            dueAt: row.action.dueAt?.toISOString() ?? null,
+          },
+          ipAddress: null,
+          userAgent: null,
+        });
       });
       created += 1;
     }
@@ -3227,27 +3563,25 @@ export class KpiManagementRepository extends BaseRepository {
             source: "kpi_rule",
           })
           .returning();
-        await tx
-          .insert(auditLogs)
-          .values({
-            userId: actorId,
-            holdingId: decision.holdingId,
-            companyId: decision.companyId,
-            membershipId: BigInt(context.membershipId),
-            actorName: "System",
-            action: "kpi.red_flag.created",
-            subjectType: "RedFlag",
-            subjectId: flag.id,
-            description: "Overdue decision rule created a red flag",
-            context: {
-              decisionId: decision.id.toString(),
-              ruleId: matching.id.toString(),
-              trigger: matching.trigger,
-              deadline: decision.deadline,
-            } as JsonValue,
-            ipAddress: null,
-            userAgent: null,
-          });
+        await tx.insert(auditLogs).values({
+          userId: actorId,
+          holdingId: decision.holdingId,
+          companyId: decision.companyId,
+          membershipId: BigInt(context.membershipId),
+          actorName: "System",
+          action: "kpi.red_flag.created",
+          subjectType: "RedFlag",
+          subjectId: flag.id,
+          description: "Overdue decision rule created a red flag",
+          context: {
+            decisionId: decision.id.toString(),
+            ruleId: matching.id.toString(),
+            trigger: matching.trigger,
+            deadline: decision.deadline,
+          } as JsonValue,
+          ipAddress: null,
+          userAgent: null,
+        });
       });
       created += 1;
     }
@@ -3361,6 +3695,12 @@ export class KpiManagementRepository extends BaseRepository {
     );
     const rows = visible.map((kpi) => ({
       id: kpi.id.toString(),
+      companyId: kpi.companyId.toString(),
+      businessUnitId: kpi.businessUnitId?.toString() ?? null,
+      branchId: kpi.branchId?.toString() ?? null,
+      domain: kpi.domain,
+      description: kpi.description,
+      direction: kpi.direction,
       name: kpi.name,
       code: kpi.code,
       department:
@@ -3371,6 +3711,10 @@ export class KpiManagementRepository extends BaseRepository {
             : (companyName.get(kpi.companyId) ?? "—"),
       unit: kpi.unit,
       target: kpi.targetValue,
+      latestValue: latest.get(kpi.id)?.actualValue ?? null,
+      latestPeriod: latest.get(kpi.id)?.period ?? null,
+      latestUpdatedAt: latest.get(kpi.id)?.updatedAt?.toISOString() ?? null,
+      latestDataState: latest.get(kpi.id)?.dataState ?? "missing",
       health: latest.get(kpi.id)?.status ?? "unknown",
       owner:
         kpi.ownerUserId === null

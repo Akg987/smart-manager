@@ -134,6 +134,9 @@ const companyManager: readonly SmartManagerPermission[] = [
   "alert.resolve",
   "report.view",
   "report.export",
+  "ai.chat",
+  "ai.analytics",
+  "ai.recommendations",
   "audit.view",
   "redflag.view",
   "redflag.create",
@@ -193,6 +196,9 @@ export const SMART_MANAGER_COMPANY_ADMIN_GRANTS: readonly SmartManagerPermission
     "redflag.create",
     "redflag.update",
     "redflag.resolve",
+    "ai.chat",
+    "ai.analytics",
+    "ai.recommendations",
   ];
 
 /** Initial grants are intentionally least-privilege; custom roles remain data-driven. */
@@ -251,6 +257,8 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "meeting.view",
     "alert.view",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
   ],
   SALES_MANAGER: [
     "company.view",
@@ -267,6 +275,9 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "alert.view",
     "alert.acknowledge",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
+    "ai.recommendations",
   ],
   FINANCE_MANAGER: [
     "company.view",
@@ -281,6 +292,9 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "action.update",
     "alert.view",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
+    "ai.recommendations",
   ],
   HR_MANAGER: [
     "company.view",
@@ -292,6 +306,8 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "action.view",
     "alert.view",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
   ],
   OPERATIONS_MANAGER: [
     "company.view",
@@ -314,6 +330,9 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "redflag.update",
     "redflag.resolve",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
+    "ai.recommendations",
   ],
   DATA_OWNER: [
     "company.view",
@@ -329,6 +348,8 @@ export const SMART_MANAGER_ROLE_GRANTS: Readonly<
     "formula.update",
     "redflag.view",
     "report.view",
+    "ai.chat",
+    "ai.analytics",
   ],
   DATA_ENTRY: [
     "company.view",

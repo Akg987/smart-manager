@@ -18,6 +18,6 @@ import { DerivedKpiService } from "./derived-kpi.service.js";
     DerivedKpiRepository,
     DerivedKpiService,
   ],
-  exports: [KpiManagementService],
+  exports: [KpiManagementService, DerivedKpiService],
 })
 export class KpiManagementModule {}

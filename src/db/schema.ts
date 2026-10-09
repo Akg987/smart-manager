@@ -1559,6 +1559,96 @@ export const kpiManagementCheckins = pgTable(
   ],
 );
 
+export const kpiImportRuns = pgTable(
+  "kpi_import_runs",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    actorId: foreignId("actor_id").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    fileName: varchar("file_name", { length: 160 }).notNull(),
+    rowCount: integer("row_count").notNull(),
+    importedCount: integer("imported_count").notNull().default(0),
+    duplicateCount: integer("duplicate_count").notNull().default(0),
+    rejectedCount: integer("rejected_count").notNull().default(0),
+    status: varchar("status", { length: 16 })
+      .$type<"completed" | "partial" | "failed">()
+      .notNull(),
+    createdAt: createdAt().notNull().defaultNow(),
+  },
+  (table) => [
+    index("kpi_import_runs_company_created_index").on(
+      table.companyId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const kpiImportRecords = pgTable(
+  "kpi_import_records",
+  {
+    id: id(),
+    runId: foreignId("run_id")
+      .references((): AnyPgColumn => kpiImportRuns.id, { onDelete: "restrict" })
+      .notNull(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    kpiId: foreignId("kpi_id")
+      .references((): AnyPgColumn => kpiManagementKpis.id, {
+        onDelete: "restrict",
+      })
+      .notNull(),
+    checkinId: foreignId("checkin_id").references(
+      (): AnyPgColumn => kpiManagementCheckins.id,
+      { onDelete: "set null" },
+    ),
+    externalId: varchar("external_id", { length: 128 }).notNull(),
+    source: varchar("source", { length: 64 }).notNull(),
+    period: varchar("period", { length: 10 }).notNull(),
+    value: numeric("value", { precision: 14, scale: 4, mode: "string" }).notNull(),
+    unit: varchar("unit", { length: 32 }).notNull(),
+    payloadHash: varchar("payload_hash", { length: 64 }).notNull(),
+    kpiVersion: integer("kpi_version").notNull(),
+    importedAt: timestamp("imported_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("kpi_import_records_company_source_external_unique").on(
+      table.companyId,
+      table.source,
+      table.externalId,
+    ),
+    uniqueIndex("kpi_import_records_company_kpi_period_unique").on(
+      table.companyId,
+      table.kpiId,
+      table.period,
+    ),
+    index("kpi_import_records_run_index").on(table.runId),
+  ],
+);
+
 export const managementObservations = pgTable(
   "management_observations",
   {
@@ -2055,6 +2145,103 @@ export const smsIppanelSendCounters = pgTable(
   ],
 );
 
+export const aiConversations = pgTable(
+  "ai_conversations",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    ownerUserId: foreignId("owner_user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "cascade" })
+      .notNull(),
+    title: varchar("title", { length: 240 }).notNull().default(""),
+    model: varchar("model", { length: 120 }).notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("ai_conversations_owner_updated_index").on(
+      table.ownerUserId,
+      table.updatedAt,
+    ),
+    index("ai_conversations_tenant_updated_index").on(
+      table.holdingId,
+      table.companyId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const aiMessages = pgTable(
+  "ai_messages",
+  {
+    id: id(),
+    conversationId: foreignId("conversation_id")
+      .references((): AnyPgColumn => aiConversations.id, { onDelete: "cascade" })
+      .notNull(),
+    role: varchar("role", { length: 16 }).notNull(),
+    content: text("content").notNull(),
+    toolCalls: json("tool_calls").$type<JsonValue>().notNull().default([]),
+    sourceReferences: json("source_references")
+      .$type<JsonValue>()
+      .notNull()
+      .default([]),
+    metadata: json("metadata").$type<JsonValue>().notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("ai_messages_conversation_created_index").on(
+      table.conversationId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const aiRecommendations = pgTable(
+  "ai_recommendations",
+  {
+    id: id(),
+    conversationId: foreignId("conversation_id")
+      .references((): AnyPgColumn => aiConversations.id, { onDelete: "cascade" })
+      .notNull(),
+    messageId: foreignId("message_id")
+      .references((): AnyPgColumn => aiMessages.id, { onDelete: "cascade" })
+      .notNull(),
+    recommendationKey: varchar("recommendation_key", { length: 80 }).notNull(),
+    details: json("details").$type<JsonValue>().notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    reviewedBy: foreignId("reviewed_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: "date" }),
+    actionId: foreignId("action_id").references(
+      (): AnyPgColumn => correctiveActions.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("ai_recommendations_message_key_unique").on(
+      table.messageId,
+      table.recommendationKey,
+    ),
+    check(
+      "ai_recommendations_status_check",
+      sql`${table.status} in ('pending', 'processing', 'accepted', 'rejected')`,
+    ),
+    index("ai_recommendations_conversation_status_index").on(
+      table.conversationId,
+      table.status,
+    ),
+  ],
+);
+
 export const migrations = pgTable(
   "migrations",
   {
@@ -2351,6 +2538,10 @@ export type KpiValue = InferSelectModel<typeof kpiManagementValues>;
 export type NewKpiValue = InferInsertModel<typeof kpiManagementValues>;
 export type KpiCheckin = InferSelectModel<typeof kpiManagementCheckins>;
 export type NewKpiCheckin = InferInsertModel<typeof kpiManagementCheckins>;
+export type KpiImportRun = InferSelectModel<typeof kpiImportRuns>;
+export type NewKpiImportRun = InferInsertModel<typeof kpiImportRuns>;
+export type KpiImportRecord = InferSelectModel<typeof kpiImportRecords>;
+export type NewKpiImportRecord = InferInsertModel<typeof kpiImportRecords>;
 export type KpiStudioOption = InferSelectModel<typeof kpiStudioOptions>;
 export type NewKpiStudioOption = InferInsertModel<typeof kpiStudioOptions>;
 export type CorrectiveAlert = InferSelectModel<typeof correctiveAlerts>;

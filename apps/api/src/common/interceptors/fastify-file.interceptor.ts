@@ -21,10 +21,21 @@ export function FastifyFileInterceptor(
       if (typeof request.file === "function") {
         const file = await request.file();
         if (file && file.fieldname === field) {
+          const fields: Record<string, string> = {};
+          for (const [name, value] of Object.entries(file.fields ?? {})) {
+            if (
+              typeof value === "object" &&
+              value !== null &&
+              "value" in value &&
+              typeof value.value !== "object"
+            )
+              fields[name] = String(value.value ?? "");
+          }
           request.uploadedFile = {
             buffer: await file.toBuffer(),
             filename: file.filename,
             mimetype: file.mimetype,
+            fields,
           };
         }
       }

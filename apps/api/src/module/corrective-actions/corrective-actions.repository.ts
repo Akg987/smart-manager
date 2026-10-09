@@ -1125,6 +1125,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
     const cards = rows.map(({ action, canUpdate, canApprove }) => {
       return {
         id: action.id.toString(),
+        departmentId: action.departmentId.toString(),
         title: action.title,
         description: action.description,
         successMetric: action.successMetric,

@@ -93,6 +93,22 @@ export class KpiManagementService {
     private readonly repository: KpiManagementRepository,
   ) {}
 
+  findImportKpisByCodes(
+    ...args: Parameters<KpiManagementRepository["findImportKpisByCodes"]>
+  ) {
+    return this.repository.findImportKpisByCodes(...args);
+  }
+
+  importKpiRows(...args: Parameters<KpiManagementRepository["importKpiRows"]>) {
+    return this.repository.importKpiRows(...args);
+  }
+
+  listKpiImportRuns(
+    ...args: Parameters<KpiManagementRepository["listKpiImportRuns"]>
+  ) {
+    return this.repository.listKpiImportRuns(...args);
+  }
+
   listStudioOptions(
     ...args: Parameters<KpiManagementRepository["listStudioOptions"]>
   ) {

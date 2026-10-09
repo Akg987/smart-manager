@@ -25,5 +25,6 @@ import { DashboardPlatformService } from "./dashboard-platform.service.js";
     DashboardPlatformRepository,
     DashboardPlatformService,
   ],
+  exports: [DashboardPlatformService],
 })
 export class DashboardModule {}

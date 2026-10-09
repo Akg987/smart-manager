@@ -13,12 +13,16 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import { IsString, MaxLength } from "class-validator";
-import type { AuthenticatedRequest } from "../../common/session.service.js";
+import { UploadedFastifyFile } from "../../common/decorators/uploaded-fastify-file.decorator.js";
+import { FastifyFileInterceptor } from "../../common/interceptors/fastify-file.interceptor.js";
 import { SessionGuard } from "../../common/session.guard.js";
-import { KpiManagementService } from "./kpi-management.service.js";
-import {
+import type { AuthenticatedRequest } from "../../common/session.service.js";
+import { currentJalaliPeriod } from "../../shared/jalali.js";
+import { AuthorizationService } from "../authorization/authorization.service.js";
+import type {
   CreateKpiDto,
   CreateObservationDto,
   CreateRedFlagDto,
@@ -30,8 +34,12 @@ import {
   UpdateRedFlagDto,
   UpdateRedFlagRuleDto,
 } from "./kpi.dto.js";
-import { currentJalaliPeriod } from "../../shared/jalali.js";
-import { AuthorizationService } from "../authorization/authorization.service.js";
+import {
+  parseKpiImportColumnMapping,
+  type KpiImportPreview,
+  previewKpiImport,
+} from "./kpi-import-parser.js";
+import { KpiManagementService } from "./kpi-management.service.js";
 
 class OptionNameDto {
   @IsString() @MaxLength(80) name!: string;
@@ -53,6 +61,104 @@ export class KpiController {
   ) {}
   @Get() dashboard(@Req() req: AuthenticatedRequest) {
     return this.service.dashboardSnapshot(req.currentUser.id);
+  }
+  @Post("import/preview")
+  @UseInterceptors(FastifyFileInterceptor("file"))
+  async previewImport(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFastifyFile()
+    file?: {
+      buffer: Buffer;
+      filename: string;
+      mimetype: string;
+      fields?: Record<string, string>;
+    },
+  ) {
+    if (!file) throw new BadRequestException("Import file is required.");
+    if (!req.authContext.companyId)
+      throw new ForbiddenException(
+        "Select a company within your active scope.",
+      );
+    let preview: KpiImportPreview;
+    try {
+      const mapping = parseKpiImportColumnMapping(file.fields?.columnMapping);
+      preview = await previewKpiImport(file.filename, file.buffer, mapping);
+    } catch (error) {
+      if (error instanceof Error) throw new BadRequestException(error.message);
+      throw error;
+    }
+    const definitions = await this.service.findImportKpisByCodes(
+      [...new Set(preview.validRows.map((row) => row.kpiCode))],
+      BigInt(req.authContext.companyId),
+    );
+    const kpiIds = new Map(definitions.map((kpi) => [kpi.code, kpi.id]));
+    const visibleRows = [];
+    const permissionIssues = [];
+    for (const row of preview.validRows) {
+      const kpiId = kpiIds.get(row.kpiCode);
+      if (
+        !kpiId ||
+        !(await this.authorization.canAccessKpi(
+          req.currentUser.id,
+          kpiId,
+          "kpi.submit",
+        ))
+      ) {
+        permissionIssues.push({
+          rowNumber: row.rowNumber,
+          field: "kpiCode",
+          message: "KPI is unavailable for import in the active company.",
+        });
+        continue;
+      }
+      visibleRows.push({ ...row, kpiId: kpiId.toString() });
+    }
+    return {
+      rowCount: preview.rowCount,
+      validRows: visibleRows,
+      issues: [...preview.issues, ...permissionIssues],
+      canImport:
+        visibleRows.length > 0 &&
+        preview.issues.length === 0 &&
+        permissionIssues.length === 0,
+    };
+  }
+  @Post("import")
+  @UseInterceptors(FastifyFileInterceptor("file"))
+  async importRows(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFastifyFile()
+    file?: {
+      buffer: Buffer;
+      filename: string;
+      mimetype: string;
+      fields?: Record<string, string>;
+    },
+  ) {
+    if (!file) throw new BadRequestException("Import file is required.");
+    const preview = await this.previewImport(req, file);
+    if (!preview.canImport)
+      throw new BadRequestException(
+        "Resolve all import validation issues before importing.",
+      );
+    const userAgent = req.headers["user-agent"];
+    return this.service.importKpiRows({
+      actorId: req.currentUser.id,
+      companyId: BigInt(req.authContext.companyId as string),
+      fileName: file.filename,
+      rows: preview.validRows.map(({ kpiId, ...row }) => row),
+      ipAddress: req.ip ?? null,
+      userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent ?? null,
+    });
+  }
+  @Get("import/runs")
+  listImportRuns(@Req() req: AuthenticatedRequest) {
+    if (!req.authContext.companyId)
+      throw new ForbiddenException("Select a company within your active scope.");
+    return this.service.listKpiImportRuns(
+      req.currentUser.id,
+      BigInt(req.authContext.companyId),
+    );
   }
   @Get("studio") studio(@Req() req: AuthenticatedRequest) {
     return this.service.studioBoard(req.currentUser.id);

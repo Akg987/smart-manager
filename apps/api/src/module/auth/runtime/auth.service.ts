@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import {
   BadRequestException,
   HttpException,
@@ -7,21 +8,23 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { compare, hash } from "bcryptjs";
-import { randomInt } from "node:crypto";
+import type { OtpPurpose } from "../../../../../../src/db/schema.js";
 import { jalaliDateToGregorian } from "../../../shared/jalali.js";
-import { type OtpPurpose } from "../../../../../../src/db/schema.js";
-import { SmsIppanelHubService } from "../../sms-ippanel-hub/sms-ippanel-hub.service.js";
-import { AuthRepository } from "./auth.repository.js";
-import { hashInvitationToken } from "../../tenant-admin/invitation-security.js";
-import { SMART_MANAGER_PERMISSION_KEYS } from "../../permissions/smart-manager-catalog.js";
 import {
   grantCoversResource,
   type SmartManagerAuthContext,
   type SmartManagerGrant,
 } from "../../permissions/smart-manager-authorization.js";
+import { SMART_MANAGER_PERMISSION_KEYS } from "../../permissions/smart-manager-catalog.js";
+import { SmsIppanelHubService } from "../../sms-ippanel-hub/sms-ippanel-hub.service.js";
+import { hashInvitationToken } from "../../tenant-admin/invitation-security.js";
+import { AuthRepository } from "./auth.repository.js";
+import { LoginAttemptLimiter } from "./login-attempt-limiter.js";
 
 @Injectable()
 export class AuthService {
+  private readonly loginAttempts = new LoginAttemptLimiter();
+
   constructor(
     private readonly auth: AuthRepository,
     private readonly sms: SmsIppanelHubService,
@@ -111,11 +114,17 @@ export class AuthService {
   }
 
   async authenticate(mobile: string, password: string) {
+    this.loginAttempts.assertAllowed(mobile);
     const [user] = await this.auth.findUserByMobile(mobile);
-    if (!user || !(await this.validatePassword(password, user.password)))
+    if (!user || !(await this.validatePassword(password, user.password))) {
+      this.loginAttempts.recordFailure(mobile);
       throw new UnauthorizedException("Invalid credentials.");
-    if (!user.approvedAt)
+    }
+    if (!user.approvedAt) {
+      this.loginAttempts.recordFailure(mobile);
       throw new UnauthorizedException("Account approval is pending.");
+    }
+    this.loginAttempts.recordSuccess(mobile);
     return user;
   }
 
