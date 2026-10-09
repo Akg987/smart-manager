@@ -1,25 +1,22 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { DatabaseModule } from "./database/database.module.js";
 import { CoreModule } from "./core/core.module.js";
-import { ModulesServicesModule } from "./modules/modules-services.module.js";
-import { SessionGuard } from "./common/session.guard.js";
-import { SessionService } from "./common/session.service.js";
-import { SessionRepository } from "./common/session.repository.js";
-import { AuthController } from "./modules/auth/auth.controller.js";
-import { DashboardController } from "./modules/dashboard/dashboard.controller.js";
-import { KpiController } from "./modules/kpi-management/kpi.controller.js";
-import { ActionsController } from "./modules/corrective-actions/actions.controller.js";
-import { UsersController } from "./modules/users/users.controller.js";
-import { OrganizationsController } from "./modules/organizations/organizations.controller.js";
-import { InboxController } from "./modules/inbox-audit/inbox.controller.js";
-import { SettingsController } from "./modules/settings/settings.controller.js";
-import { ModulePlatformController } from "./modules/module-platform/module-platform.controller.js";
-import { AlertsController } from "./modules/corrective-actions/alerts.controller.js";
-import { DataController } from "./modules/data/data.controller.js";
-import { SmsController } from "./modules/sms-ippanel-hub/sms.controller.js";
-import { CheckinsController } from "./modules/kpi-management/checkins.controller.js";
-import { AuthorizationController } from "./modules/authorization/authorization.controller.js";
+import { DatabaseModule } from "./database/database.module.js";
+import { AuthModule } from "./module/auth/runtime/auth.module.js";
+import { AuthorizationModule } from "./module/authorization/authorization.module.js";
+import { CorrectiveActionsModule } from "./module/corrective-actions/corrective-actions.module.js";
+import { DashboardModule } from "./module/dashboard/dashboard.module.js";
+import { DecisionsModule } from "./module/decisions/decisions.module.js";
+import { DataModule } from "./module/data/data.module.js";
+import { InboxAuditModule } from "./module/inbox-audit/inbox-audit.module.js";
+import { KpiManagementModule } from "./module/kpi-management/kpi-management.module.js";
+import { ModulePlatformModule } from "./module/module-platform/module-platform.module.js";
+import { OrganizationsModule } from "./module/organizations/organizations.module.js";
+import { SettingsModule } from "./module/settings/settings.module.js";
+import { SmsIppanelHubModule } from "./module/sms-ippanel-hub/sms-ippanel-hub.module.js";
+import { TenantAdminModule } from "./module/tenant-admin/tenant-admin.module.js";
+import { UsersModule } from "./module/users/users.module.js";
+import { ManagementWorkflowsModule } from "./module/management-workflows/management-workflows.module.js";
 
 @Module({
   imports: [
@@ -29,24 +26,21 @@ import { AuthorizationController } from "./modules/authorization/authorization.c
     }),
     CoreModule,
     DatabaseModule,
-    ModulesServicesModule,
+    AuthModule,
+    AuthorizationModule,
+    UsersModule,
+    OrganizationsModule,
+    KpiManagementModule,
+    DecisionsModule,
+    CorrectiveActionsModule,
+    DashboardModule,
+    DataModule,
+    InboxAuditModule,
+    SettingsModule,
+    ModulePlatformModule,
+    SmsIppanelHubModule,
+    TenantAdminModule,
+    ManagementWorkflowsModule,
   ],
-  controllers: [
-    AuthController,
-    AuthorizationController,
-    DashboardController,
-    KpiController,
-    CheckinsController,
-    ActionsController,
-    AlertsController,
-    DataController,
-    UsersController,
-    OrganizationsController,
-    InboxController,
-    SettingsController,
-    ModulePlatformController,
-    SmsController,
-  ],
-  providers: [SessionRepository, SessionService, SessionGuard],
 })
 export class AppModule {}

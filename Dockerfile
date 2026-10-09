@@ -11,7 +11,7 @@ COPY . .
 ARG NEST_API_URL=http://api:4000
 ENV NEST_API_URL=${NEST_API_URL}
 RUN npm run build
-RUN ./node_modules/.bin/tsc -p apps/api/tsconfig.json --noEmit false --outDir apps/api/dist --rootDir .
+RUN ./node_modules/.bin/tsc -p apps/api/tsconfig.build.json
 
 FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app

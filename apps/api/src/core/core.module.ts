@@ -8,12 +8,16 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { I18nService } from "../common/i18n/i18n.service.js";
 import { HttpExceptionFilter } from "../common/filters/http-exception.filter.js";
 import { TransformInterceptor } from "../common/interceptors/transform.interceptor.js";
+import { AuthContextInterceptor } from "../common/interceptors/auth-context.interceptor.js";
+import { AuthContextStore } from "../common/auth-context.store.js";
 import { errorsByField } from "../common/validation.js";
 
 @Global()
 @Module({
   providers: [
     I18nService,
+    AuthContextStore,
+    { provide: APP_INTERCEPTOR, useClass: AuthContextInterceptor },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
     {
@@ -30,6 +34,6 @@ import { errorsByField } from "../common/validation.js";
       }),
     },
   ],
-  exports: [I18nService],
+  exports: [I18nService, AuthContextStore],
 })
 export class CoreModule {}

@@ -9,7 +9,45 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
+    "paths": {
+      "@nestjs/*": ["./node_modules/@nestjs/*"],
+      "@fastify/*": ["./node_modules/@fastify/*"],
+      "drizzle-orm": ["./node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["./node_modules/drizzle-orm/*"],
+      "class-transformer": ["./node_modules/class-transformer"],
+      "class-validator": ["./node_modules/class-validator"],
+      "fastify": ["./node_modules/fastify"],
+      "file-type": ["./node_modules/file-type"],
+      "minio": ["./node_modules/minio"],
+      "redis": ["./node_modules/redis"]
+    },
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/module/auth/auth-jwt.service.ts",
+    "src/module/auth/auth-validation.service.ts",
+    "src/module/auth/auth-validation.service.spec.ts",
+    "src/module/auth/auth.controller.ts",
+    "src/module/auth/auth.module.ts",
+    "src/module/auth/auth.permissions.ts",
+    "src/module/auth/auth.service.ts",
+    "src/module/auth/auth.types.ts",
+    "src/module/auth/decorators/**/*.ts",
+    "src/module/auth/dto/**/*.ts",
+    "src/module/auth/guards/**/*.ts",
+    "src/module/auth/mappers/**/*.ts",
+    "src/module/auth/strategies/**/*.ts",
+    "src/module/permissions/permission-catalog.ts",
+    "src/module/permissions/permissions-management.controller.ts",
+    "src/module/permissions/permissions.module.ts",
+    "src/module/permissions/permissions.permissions.ts",
+    "src/module/permissions/permissions.presenter.ts",
+    "src/module/permissions/permissions.service.ts",
+    "src/module/permissions/permissions.service.spec.ts",
+    "src/module/permissions/domain/**/*.ts",
+    "src/module/permissions/dto/**/*.ts",
+    "src/module/permissions/infrastructure/**/*.ts",
+    "src/module/roles/**/*.ts"
+  ]
 }
