@@ -1,9 +1,11 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { users } from "../../../../src/db/schema.js";
+import type { SmartManagerAuthContext } from "../module/permissions/smart-manager-authorization.js";
 
 export type AppRequest = FastifyRequest & {
   cookies: Record<string, string | undefined>;
   currentUser?: typeof users.$inferSelect;
+  authContext?: SmartManagerAuthContext;
   uploadedFile?: { buffer: Buffer; filename: string; mimetype: string };
 };
 

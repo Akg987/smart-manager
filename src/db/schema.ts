@@ -23,16 +23,91 @@ import {
   type InferSelectModel,
 } from "drizzle-orm";
 
-/** Backed enums stay VARCHAR columns, as in the Laravel migrations. */
+/** Backed enums stay VARCHAR columns to match the current database contract. */
 export type UserRole = "admin" | "user";
 export type OtpPurpose = "password-reset" | "two-factor";
 export type NotificationType = "info" | "alert" | "action" | "system";
 export type CheckinStatus = "draft" | "submitted" | "revised";
+export type KpiDefinitionStatus = "draft" | "reviewed" | "published" | "locked";
+export type KpiCheckinWorkflowStatus =
+  | "draft"
+  | "submitted"
+  | "data_submitted"
+  | "approved"
+  | "rejected"
+  | "revised"
+  | "locked";
+export type KpiDataState =
+  | "valid"
+  | "zero"
+  | "null"
+  | "missing"
+  | "rejected"
+  | "late"
+  | "stale";
+export type RedFlagStatus =
+  | "new"
+  | "investigating"
+  | "action_required"
+  | "resolved"
+  | "closed";
+export type ManagementDecisionStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "communicated"
+  | "in_progress"
+  | "result_review"
+  | "resolved"
+  | "closed"
+  | "rejected"
+  | "cancelled";
 export type KpiDirection = "higher" | "lower" | "range";
 export type KpiHealth = "green" | "yellow" | "red" | "unknown";
-export type ActionStatus = "open" | "in_progress" | "blocked" | "done";
+export type DashboardType =
+  | "holding"
+  | "company"
+  | "business_unit"
+  | "role"
+  | "personal";
+export type DashboardVisibility = "private" | "role" | "company" | "holding";
+export type DashboardStatus = "draft" | "published" | "archived";
+export type DashboardWidgetType =
+  | "kpi_card"
+  | "trend_chart"
+  | "line_chart"
+  | "bar_chart"
+  | "comparison"
+  | "progress"
+  | "table"
+  | "red_flag_list"
+  | "action_list"
+  | "decision_list"
+  | "data_quality"
+  | "company_scorecard";
+export type DerivedKpiStatus = "draft" | "published" | "archived";
+export type ManagementReviewType = "wbr" | "mbr";
+export type ManagementReviewStatus = "draft" | "published" | "closed";
+export type ActionStatus =
+  | "open"
+  | "proposed"
+  | "approved"
+  | "in_progress"
+  | "blocked"
+  | "pending_completion_approval"
+  | "closed"
+  | "canceled"
+  | "done";
 export type AlertSeverity = "low" | "medium" | "high" | "urgent";
 export type AlertStatus = "open" | "acknowledged" | "resolved";
+export type TenantScopeType =
+  | "holding"
+  | "company"
+  | "branch"
+  | "businessUnit"
+  | "own"
+  | "assigned"
+  | "domain";
 export type JsonValue =
   | string
   | number
@@ -111,6 +186,183 @@ export const departments = pgTable(
   ],
 );
 
+export const holdings = pgTable(
+  "holdings",
+  {
+    id: id(),
+    name: varchar("name", { length: 160 }).notNull(),
+    code: varchar("code", { length: 48 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    logo: varchar("logo", { length: 255 }),
+    calendar: varchar("calendar", { length: 32 }).notNull().default("jalali"),
+    timezone: varchar("timezone", { length: 64 })
+      .notNull()
+      .default("Asia/Tehran"),
+    currency: varchar("currency", { length: 8 }).notNull().default("IRR"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("holdings_code_unique").on(table.code),
+    index("holdings_status_index").on(table.status),
+  ],
+);
+
+export const companies = pgTable(
+  "companies",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    code: varchar("code", { length: 48 }).notNull(),
+    legalName: varchar("legal_name", { length: 200 }),
+    ceoUserId: foreignId("ceo_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    pnlOwnerUserId: foreignId("pnl_owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    dataOwnerUserId: foreignId("data_owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    pmoReviewerUserId: foreignId("pmo_reviewer_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    calendar: varchar("calendar", { length: 32 }).notNull().default("jalali"),
+    currency: varchar("currency", { length: 8 }).notNull().default("IRR"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("companies_holding_id_code_unique").on(
+      table.holdingId,
+      table.code,
+    ),
+    index("companies_holding_id_status_index").on(
+      table.holdingId,
+      table.status,
+    ),
+    index("companies_ceo_user_id_index").on(table.ceoUserId),
+  ],
+);
+
+export const branches = pgTable(
+  "branches",
+  {
+    id: id(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    code: varchar("code", { length: 48 }).notNull(),
+    managerUserId: foreignId("manager_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("branches_company_id_code_unique").on(
+      table.companyId,
+      table.code,
+    ),
+    index("branches_company_id_status_index").on(table.companyId, table.status),
+  ],
+);
+
+export const businessUnits = pgTable(
+  "business_units",
+  {
+    id: id(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    legacyDepartmentId: foreignId("legacy_department_id").references(
+      (): AnyPgColumn => departments.id,
+      { onDelete: "set null" },
+    ),
+    name: varchar("name", { length: 160 }).notNull(),
+    code: varchar("code", { length: 48 }).notNull(),
+    managerUserId: foreignId("manager_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    domain: varchar("domain", { length: 64 }).notNull().default("general"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("business_units_company_id_code_unique").on(
+      table.companyId,
+      table.code,
+    ),
+    uniqueIndex("business_units_legacy_department_id_unique").on(
+      table.legacyDepartmentId,
+    ),
+    index("business_units_company_id_branch_id_index").on(
+      table.companyId,
+      table.branchId,
+    ),
+  ],
+);
+
+export const roles = pgTable(
+  "roles",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id").references(
+      (): AnyPgColumn => holdings.id,
+      { onDelete: "cascade" },
+    ),
+    key: varchar("key", { length: 64 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    isSystem: boolean("is_system").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("roles_holding_id_key_unique").on(table.holdingId, table.key),
+    index("roles_is_system_index").on(table.isSystem),
+  ],
+);
+
+export const permissions = pgTable(
+  "permissions",
+  {
+    id: id(),
+    key: varchar("key", { length: 120 }).notNull(),
+    resource: varchar("resource", { length: 64 }).notNull(),
+    action: varchar("action", { length: 64 }).notNull(),
+    description: varchar("description", { length: 300 }),
+    isSystem: boolean("is_system").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("permissions_key_unique").on(table.key),
+    uniqueIndex("permissions_resource_action_unique").on(
+      table.resource,
+      table.action,
+    ),
+  ],
+);
+
 export const accessLevels = pgTable(
   "access_levels",
   {
@@ -150,8 +402,17 @@ export const rolePermissions = pgTable(
   "role_permissions",
   {
     id: id(),
-    role: varchar("role", { length: 20 }).notNull(),
-    permission: varchar("permission", { length: 100 }).notNull(),
+    role: varchar("role", { length: 20 }),
+    permission: varchar("permission", { length: 100 }),
+    roleId: foreignId("role_id").references((): AnyPgColumn => roles.id, {
+      onDelete: "cascade",
+    }),
+    permissionId: foreignId("permission_id").references(
+      (): AnyPgColumn => permissions.id,
+      { onDelete: "cascade" },
+    ),
+    scopeType: varchar("scope_type", { length: 24 }).$type<TenantScopeType>(),
+    domain: varchar("domain", { length: 64 }),
   },
   (table) => [
     uniqueIndex("role_permissions_role_permission_unique").on(
@@ -159,6 +420,119 @@ export const rolePermissions = pgTable(
       table.permission,
     ),
     index("role_permissions_role_index").on(table.role),
+    uniqueIndex("role_permissions_role_id_permission_id_unique").on(
+      table.roleId,
+      table.permissionId,
+    ),
+  ],
+);
+
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: id(),
+    userId: foreignId("user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "cascade" })
+      .notNull(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "cascade" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "cascade" },
+    ),
+    roleId: foreignId("role_id").references((): AnyPgColumn => roles.id, {
+      onDelete: "restrict",
+    }),
+    scopeType: varchar("scope_type", { length: 24 })
+      .$type<TenantScopeType>()
+      .notNull()
+      .default("company"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("memberships_user_id_status_index").on(table.userId, table.status),
+    index("memberships_holding_id_company_id_index").on(
+      table.holdingId,
+      table.companyId,
+    ),
+    uniqueIndex("memberships_user_org_scope_unique").on(
+      table.userId,
+      table.holdingId,
+      table.companyId,
+      table.branchId,
+      table.businessUnitId,
+      table.roleId,
+    ),
+  ],
+);
+
+export const membershipRoles = pgTable(
+  "membership_roles",
+  {
+    id: id(),
+    membershipId: foreignId("membership_id")
+      .references((): AnyPgColumn => memberships.id, { onDelete: "cascade" })
+      .notNull(),
+    roleId: foreignId("role_id")
+      .references((): AnyPgColumn => roles.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("membership_roles_membership_id_role_id_unique").on(
+      table.membershipId,
+      table.roleId,
+    ),
+    index("membership_roles_role_id_index").on(table.roleId),
+  ],
+);
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    mobile: varchar("mobile", { length: 11 }).notNull(),
+    tokenHash: varchar("token_hash", { length: 128 }).notNull(),
+    roleId: foreignId("role_id").references((): AnyPgColumn => roles.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "date" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("invitations_token_hash_unique").on(table.tokenHash),
+    index("invitations_holding_id_mobile_index").on(
+      table.holdingId,
+      table.mobile,
+    ),
+    index("invitations_expires_at_index").on(table.expiresAt),
   ],
 );
 
@@ -181,6 +555,71 @@ export const sessions = pgTable(
   (table) => [
     index("sessions_user_id_index").on(table.userId),
     index("sessions_last_activity_index").on(table.lastActivity),
+  ],
+);
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: foreignId("user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "cascade" })
+      .notNull(),
+    membershipId: foreignId("membership_id")
+      .references((): AnyPgColumn => memberships.id, { onDelete: "cascade" })
+      .notNull(),
+    activeCompanyId: foreignId("active_company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    tokenVersion: integer("token_version").notNull().default(1),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    lastActivityAt: timestamp("last_activity_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("auth_sessions_user_id_revoked_at_index").on(
+      table.userId,
+      table.revokedAt,
+    ),
+    index("auth_sessions_membership_id_index").on(table.membershipId),
+    index("auth_sessions_expires_at_index").on(table.expiresAt),
+  ],
+);
+
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    sessionId: varchar("session_id", { length: 36 })
+      .references((): AnyPgColumn => authSessions.id, { onDelete: "cascade" })
+      .notNull(),
+    tokenHash: varchar("token_hash", { length: 128 }).notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "date" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    replacedById: varchar("replaced_by_id", { length: 36 }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("refresh_tokens_token_hash_unique").on(table.tokenHash),
+    index("refresh_tokens_session_id_revoked_at_index").on(
+      table.sessionId,
+      table.revokedAt,
+    ),
+    index("refresh_tokens_expires_at_index").on(table.expiresAt),
   ],
 );
 
@@ -324,6 +763,18 @@ export const auditLogs = pgTable(
     userId: foreignId("user_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
+    holdingId: foreignId("holding_id").references(
+      (): AnyPgColumn => holdings.id,
+      { onDelete: "set null" },
+    ),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "set null" },
+    ),
+    membershipId: foreignId("membership_id").references(
+      (): AnyPgColumn => memberships.id,
+      { onDelete: "set null" },
+    ),
     actorName: varchar("actor_name", { length: 150 }).notNull(),
     action: varchar("action", { length: 64 }).notNull(),
     subjectType: varchar("subject_type", { length: 191 }),
@@ -337,6 +788,10 @@ export const auditLogs = pgTable(
   (table) => [
     index("audit_logs_user_id_index").on(table.userId),
     index("audit_logs_action_index").on(table.action),
+    index("audit_logs_company_id_created_at_index").on(
+      table.companyId,
+      table.createdAt,
+    ),
     index("audit_logs_created_at_index").on(table.createdAt),
     index("audit_logs_subject_type_subject_id_index").on(
       table.subjectType,
@@ -380,16 +835,483 @@ export const inboxNotifications = pgTable(
   ],
 );
 
+export const dashboards = pgTable(
+  "dashboards",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "cascade" },
+    ),
+    ownerUserId: foreignId("owner_user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "restrict" })
+      .notNull(),
+    roleKey: varchar("role_key", { length: 80 }),
+    name: varchar("name", { length: 160 }).notNull(),
+    type: varchar("type", { length: 24 }).$type<DashboardType>().notNull(),
+    visibility: varchar("visibility", { length: 16 })
+      .$type<DashboardVisibility>()
+      .notNull()
+      .default("private"),
+    layout: json("layout")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'[]'::json`),
+    filters: json("filters")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    status: varchar("status", { length: 16 })
+      .$type<DashboardStatus>()
+      .notNull()
+      .default("draft"),
+    version: integer("version").notNull().default(1),
+    publishedAt: timestamp("published_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("dashboards_holding_status_index").on(table.holdingId, table.status),
+    index("dashboards_company_status_index").on(table.companyId, table.status),
+    index("dashboards_owner_updated_index").on(
+      table.ownerUserId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const dashboardWidgets = pgTable(
+  "dashboard_widgets",
+  {
+    id: id(),
+    dashboardId: foreignId("dashboard_id")
+      .references((): AnyPgColumn => dashboards.id, { onDelete: "cascade" })
+      .notNull(),
+    type: varchar("type", { length: 32 })
+      .$type<DashboardWidgetType>()
+      .notNull(),
+    title: varchar("title", { length: 160 }).notNull().default(""),
+    config: json("config")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    positionX: integer("position_x").notNull().default(0),
+    positionY: integer("position_y").notNull().default(0),
+    width: integer("width").notNull().default(6),
+    height: integer("height").notNull().default(4),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("dashboard_widgets_dashboard_position_index").on(
+      table.dashboardId,
+      table.positionY,
+      table.positionX,
+    ),
+  ],
+);
+
+export const dashboardVersions = pgTable(
+  "dashboard_versions",
+  {
+    id: id(),
+    dashboardId: foreignId("dashboard_id")
+      .references((): AnyPgColumn => dashboards.id, { onDelete: "restrict" })
+      .notNull(),
+    version: integer("version").notNull(),
+    definition: json("definition").$type<JsonValue>().notNull(),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("dashboard_versions_dashboard_version_unique").on(
+      table.dashboardId,
+      table.version,
+    ),
+  ],
+);
+
+export const derivedKpis = pgTable(
+  "derived_kpis",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    code: varchar("code", { length: 64 }).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    description: varchar("description", { length: 2000 }).notNull().default(""),
+    sourceKpis: json("source_kpis")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'[]'::json`),
+    formulaAst: json("formula_ast").$type<JsonValue>().notNull(),
+    formulaSource: varchar("formula_source", { length: 2000 }).notNull(),
+    formulaVersion: integer("formula_version").notNull().default(1),
+    unit: varchar("unit", { length: 80 }).notNull(),
+    periodType: varchar("period_type", { length: 32 }).notNull(),
+    ownerUserId: foreignId("owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    targetValue: numeric("target_value", {
+      precision: 14,
+      scale: 4,
+      mode: "string",
+    }),
+    status: varchar("status", { length: 16 })
+      .$type<DerivedKpiStatus>()
+      .notNull()
+      .default("draft"),
+    version: integer("version").notNull().default(1),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("derived_kpis_company_code_unique").on(
+      table.companyId,
+      table.code,
+    ),
+    index("derived_kpis_company_status_index").on(
+      table.companyId,
+      table.status,
+    ),
+  ],
+);
+
+export const derivedKpiVersions = pgTable(
+  "derived_kpi_versions",
+  {
+    id: id(),
+    derivedKpiId: foreignId("derived_kpi_id")
+      .references((): AnyPgColumn => derivedKpis.id, { onDelete: "restrict" })
+      .notNull(),
+    version: integer("version").notNull(),
+    formulaVersion: integer("formula_version").notNull(),
+    definition: json("definition").$type<JsonValue>().notNull(),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("derived_kpi_versions_entity_version_unique").on(
+      table.derivedKpiId,
+      table.version,
+    ),
+  ],
+);
+
+export const derivedKpiValues = pgTable(
+  "derived_kpi_values",
+  {
+    id: id(),
+    derivedKpiId: foreignId("derived_kpi_id")
+      .references((): AnyPgColumn => derivedKpis.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    period: varchar("period", { length: 10 }).notNull(),
+    formulaVersion: integer("formula_version").notNull(),
+    actualValue: numeric("actual_value", {
+      precision: 14,
+      scale: 4,
+      mode: "string",
+    }).notNull(),
+    sourceSnapshot: json("source_snapshot").$type<JsonValue>().notNull(),
+    calculatedBy: foreignId("calculated_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    calculatedAt: timestamp("calculated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("derived_kpi_values_period_formula_version_unique").on(
+      table.derivedKpiId,
+      table.period,
+      table.formulaVersion,
+    ),
+    index("derived_kpi_values_company_period_index").on(
+      table.companyId,
+      table.period,
+    ),
+  ],
+);
+
+export const managementReviewMeetings = pgTable(
+  "management_review_meetings",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    type: varchar("type", { length: 8 })
+      .$type<ManagementReviewType>()
+      .notNull(),
+    period: varchar("period", { length: 10 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    status: varchar("status", { length: 16 })
+      .$type<ManagementReviewStatus>()
+      .notNull()
+      .default("draft"),
+    scheduledAt: timestamp("scheduled_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    ownerUserId: foreignId("owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    sections: json("sections")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    snapshot: json("snapshot")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    version: integer("version").notNull().default(1),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    publishedAt: timestamp("published_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    closedAt: timestamp("closed_at", { withTimezone: true, mode: "date" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("management_review_scope_period_unique").on(
+      table.companyId,
+      sql`coalesce(${table.businessUnitId}, 0)`,
+      table.type,
+      table.period,
+    ),
+    index("management_review_company_status_period_index").on(
+      table.companyId,
+      table.status,
+      table.period,
+    ),
+  ],
+);
+
+export const managementEscalationRules = pgTable(
+  "management_escalation_rules",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    trigger: varchar("trigger", { length: 32 }).notNull(),
+    configuration: json("configuration")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    escalationLevels: json("escalation_levels").$type<JsonValue>().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("management_escalation_rules_scope_enabled_index").on(
+      table.holdingId,
+      table.companyId,
+      table.enabled,
+    ),
+  ],
+);
+
+export const managementEscalationEvents = pgTable(
+  "management_escalation_events",
+  {
+    id: id(),
+    ruleId: foreignId("rule_id")
+      .references((): AnyPgColumn => managementEscalationRules.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    targetType: varchar("target_type", { length: 24 }).notNull(),
+    targetId: foreignId("target_id").notNull(),
+    level: integer("level").notNull(),
+    recipientUserId: foreignId("recipient_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    recipientRole: varchar("recipient_role", { length: 80 }),
+    detail: json("detail")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("management_escalation_target_level_unique").on(
+      table.ruleId,
+      table.targetType,
+      table.targetId,
+      table.level,
+    ),
+    index("management_escalation_company_created_index").on(
+      table.companyId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const managementReminderPolicies = pgTable(
+  "management_reminder_policies",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    itemType: varchar("item_type", { length: 24 }).notNull(),
+    offsetsMinutes: json("offsets_minutes")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'[-1440,0,1440]'::json`),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("management_reminder_scope_item_unique").on(
+      table.holdingId,
+      table.companyId,
+      table.itemType,
+    ),
+  ],
+);
+
+export const managementReminders = pgTable(
+  "management_reminders",
+  {
+    id: id(),
+    policyId: foreignId("policy_id").references(
+      (): AnyPgColumn => managementReminderPolicies.id,
+      { onDelete: "set null" },
+    ),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    targetType: varchar("target_type", { length: 24 }).notNull(),
+    targetId: foreignId("target_id").notNull(),
+    recipientUserId: foreignId("recipient_user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "cascade" })
+      .notNull(),
+    phase: varchar("phase", { length: 16 }).notNull(),
+    scheduledFor: timestamp("scheduled_for", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("management_reminders_idempotent_unique").on(
+      table.targetType,
+      table.targetId,
+      table.recipientUserId,
+      table.phase,
+      table.scheduledFor,
+    ),
+    index("management_reminders_due_index").on(
+      table.sentAt,
+      table.scheduledFor,
+    ),
+  ],
+);
+
 export const kpiManagementKpis = pgTable(
   "kpi_management_kpis",
   {
     id: id(),
-    departmentId: foreignId("department_id")
-      .references((): AnyPgColumn => departments.id, { onDelete: "restrict" })
+    departmentId: foreignId("department_id").references(
+      (): AnyPgColumn => departments.id,
+      { onDelete: "restrict" },
+    ),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
       .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
     code: varchar("code", { length: 64 }).notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     description: varchar("description", { length: 3000 }).notNull().default(""),
+    domain: varchar("domain", { length: 80 }),
     category: varchar("category", { length: 100 }).notNull().default("عملکرد"),
     unit: varchar("unit", { length: 80 }).notNull().default("عدد"),
     direction: varchar("direction", { length: 10 })
@@ -414,15 +1336,45 @@ export const kpiManagementKpis = pgTable(
       (): AnyPgColumn => users.id,
       { onDelete: "set null" },
     ),
+    dataOwnerUserId: foreignId("data_owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
     reporterUserId: foreignId("reporter_user_id").references(
       (): AnyPgColumn => users.id,
       { onDelete: "set null" },
     ),
+    reviewerUserId: foreignId("reviewer_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    source: varchar("source", { length: 160 }).notNull().default("manual"),
+    formulaType: varchar("formula_type", { length: 48 })
+      .notNull()
+      .default("direct"),
+    reportingPeriod: varchar("reporting_period", { length: 32 })
+      .notNull()
+      .default("monthly"),
+    submissionDeadline: date("submission_deadline", { mode: "string" }),
+    version: integer("version").notNull().default(1),
+    effectiveFrom: date("effective_from", { mode: "string" })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
+    status: varchar("status", { length: 16 })
+      .$type<KpiDefinitionStatus>()
+      .notNull()
+      .default("draft"),
     frequency: varchar("frequency", { length: 50 }).notNull().default("هفتگی"),
     inputMode: varchar("input_mode", { length: 64 })
       .notNull()
       .default("direct"),
     inputFields: json("input_fields").$type<JsonValue>().notNull(),
+    inputOptions: json("input_options")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'[]'::json`),
+    formulaConfig: json("formula_config").$type<JsonValue>(),
+    rangeConfig: json("range_config").$type<JsonValue>(),
     active: boolean("active").notNull().default(true),
     weight: numeric("weight", { precision: 5, scale: 2, mode: "string" })
       .notNull()
@@ -431,7 +1383,10 @@ export const kpiManagementKpis = pgTable(
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex("kpi_management_kpis_code_unique").on(table.code),
+    uniqueIndex("kpi_management_kpis_company_code_unique").on(
+      table.companyId,
+      table.code,
+    ),
     index("kpi_management_kpis_owner_user_id_foreign").on(table.ownerUserId),
     index("kpi_management_kpis_department_id_active_index").on(
       table.departmentId,
@@ -439,6 +1394,40 @@ export const kpiManagementKpis = pgTable(
     ),
     index("kpi_management_kpis_reporter_user_id_foreign").on(
       table.reporterUserId,
+    ),
+    index("kpi_management_kpis_company_status_index").on(
+      table.companyId,
+      table.status,
+    ),
+    index("kpi_management_kpis_business_unit_index").on(table.businessUnitId),
+  ],
+);
+
+export const kpiManagementKpiVersions = pgTable(
+  "kpi_management_kpi_versions",
+  {
+    id: id(),
+    kpiId: foreignId("kpi_id")
+      .references((): AnyPgColumn => kpiManagementKpis.id, {
+        onDelete: "restrict",
+      })
+      .notNull(),
+    version: integer("version").notNull(),
+    definition: json("definition").$type<JsonValue>().notNull(),
+    effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("kpi_management_kpi_versions_kpi_version_unique").on(
+      table.kpiId,
+      table.version,
+    ),
+    index("kpi_management_kpi_versions_effective_index").on(
+      table.kpiId,
+      table.effectiveFrom,
     ),
   ],
 );
@@ -452,32 +1441,66 @@ export const kpiManagementValues = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "restrict" },
+    ),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
     period: varchar("period", { length: 10 }).notNull(),
+    version: integer("version").notNull().default(1),
+    definitionVersion: integer("definition_version").notNull().default(1),
     actualValue: numeric("actual_value", {
       precision: 14,
       scale: 4,
       mode: "string",
     }),
+    rawValue: json("raw_value").$type<JsonValue>(),
+    unit: varchar("unit", { length: 80 }).notNull().default(""),
     targetValue: numeric("target_value", {
       precision: 14,
       scale: 4,
       mode: "string",
     }).notNull(),
     status: varchar("status", { length: 16 }).$type<KpiHealth>().notNull(),
+    dataState: varchar("data_state", { length: 16 })
+      .$type<KpiDataState>()
+      .notNull()
+      .default("valid"),
     source: varchar("source", { length: 32 }).notNull().default("checkin"),
     submittedBy: foreignId("submitted_by").references(
       (): AnyPgColumn => users.id,
       { onDelete: "set null" },
     ),
+    reviewedBy: foreignId("reviewed_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    approvedBy: foreignId("approved_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at", { withTimezone: true, mode: "date" }),
+    isCurrent: boolean("is_current").notNull().default(false),
     note: varchar("note", { length: 500 }).notNull().default(""),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex("kpi_management_values_kpi_id_period_unique").on(
+    uniqueIndex("kpi_management_values_kpi_period_version_unique").on(
       table.kpiId,
       table.period,
+      table.version,
     ),
+    uniqueIndex("kpi_management_values_one_current_period_unique")
+      .on(table.kpiId, table.period)
+      .where(sql`${table.isCurrent} = true`),
     index("kpi_management_values_submitted_by_foreign").on(table.submittedBy),
     index("kpi_management_values_period_index").on(table.period),
   ],
@@ -496,7 +1519,9 @@ export const kpiManagementCheckins = pgTable(
       .references((): AnyPgColumn => users.id, { onDelete: "cascade" })
       .notNull(),
     period: varchar("period", { length: 10 }).notNull(),
-    status: varchar("status", { length: 16 }).$type<CheckinStatus>().notNull(),
+    status: varchar("status", { length: 16 })
+      .$type<KpiCheckinWorkflowStatus>()
+      .notNull(),
     dataJson: json("data_json").$type<JsonValue>().notNull(),
     actualValue: numeric("actual_value", {
       precision: 14,
@@ -505,6 +1530,15 @@ export const kpiManagementCheckins = pgTable(
     }),
     note: varchar("note", { length: 500 }).notNull().default(""),
     blockers: varchar("blockers", { length: 500 }).notNull().default(""),
+    reviewedBy: foreignId("reviewed_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    approvedBy: foreignId("approved_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    reviewNote: varchar("review_note", { length: 1000 }).notNull().default(""),
     submittedAt: timestamp("submitted_at", {
       withTimezone: true,
       mode: "date",
@@ -521,6 +1555,233 @@ export const kpiManagementCheckins = pgTable(
     index("kpi_management_checkins_user_id_period_index").on(
       table.userId,
       table.period,
+    ),
+  ],
+);
+
+export const managementObservations = pgTable(
+  "management_observations",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    userId: foreignId("user_id")
+      .references((): AnyPgColumn => users.id, { onDelete: "restrict" })
+      .notNull(),
+    period: varchar("period", { length: 10 }).notNull(),
+    text: text("text").notNull(),
+    tags: json("tags").$type<JsonValue>().notNull().default([]),
+    relatedKpiIds: json("related_kpi_ids")
+      .$type<JsonValue>()
+      .notNull()
+      .default([]),
+    status: varchar("status", { length: 16 }).notNull().default("submitted"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("management_observations_company_period_index").on(
+      table.companyId,
+      table.period,
+    ),
+    index("management_observations_business_unit_period_index").on(
+      table.businessUnitId,
+      table.period,
+    ),
+    index("management_observations_user_created_index").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const managementDecisions = pgTable(
+  "management_decisions",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    period: varchar("period", { length: 10 }),
+    sourceMeeting: varchar("source_meeting", { length: 250 }),
+    decisionText: text("decision_text").notNull(),
+    ownerUserId: foreignId("owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    deadline: date("deadline", { mode: "string" }).notNull(),
+    status: varchar("status", { length: 24 })
+      .$type<ManagementDecisionStatus>()
+      .notNull()
+      .default("pending_approval"),
+    relatedKpiIds: json("related_kpi_ids")
+      .$type<JsonValue>()
+      .notNull()
+      .default([]),
+    actionIds: json("action_ids").$type<JsonValue>().notNull().default([]),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    approvedBy: foreignId("approved_by").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at", { withTimezone: true, mode: "date" }),
+    outcome: text("outcome"),
+    closureEvidence: varchar("closure_evidence", { length: 2000 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    closedAt: timestamp("closed_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    index("management_decisions_company_status_deadline_index").on(
+      table.companyId,
+      table.status,
+      table.deadline,
+    ),
+    index("management_decisions_business_unit_status_deadline_index").on(
+      table.businessUnitId,
+      table.status,
+      table.deadline,
+    ),
+    index("management_decisions_owner_deadline_index").on(
+      table.ownerUserId,
+      table.deadline,
+    ),
+  ],
+);
+
+export const redFlags = pgTable(
+  "red_flags",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "restrict" })
+      .notNull(),
+    companyId: foreignId("company_id")
+      .references((): AnyPgColumn => companies.id, { onDelete: "restrict" })
+      .notNull(),
+    branchId: foreignId("branch_id").references(
+      (): AnyPgColumn => branches.id,
+      { onDelete: "set null" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "set null" },
+    ),
+    kpiId: foreignId("kpi_id").references(
+      (): AnyPgColumn => kpiManagementKpis.id,
+      { onDelete: "restrict" },
+    ),
+    decisionId: foreignId("decision_id").references(
+      (): AnyPgColumn => managementDecisions.id,
+      { onDelete: "set null" },
+    ),
+    period: varchar("period", { length: 10 }),
+    triggerValue: numeric("trigger_value", {
+      precision: 14,
+      scale: 4,
+      mode: "string",
+    }),
+    threshold: numeric("threshold", {
+      precision: 14,
+      scale: 4,
+      mode: "string",
+    }),
+    description: varchar("description", { length: 2000 }).notNull(),
+    suspectedCause: varchar("suspected_cause", { length: 2000 }),
+    severity: varchar("severity", { length: 16 }).notNull(),
+    ownerUserId: foreignId("owner_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
+    deadline: date("deadline", { mode: "string" }),
+    status: varchar("status", { length: 24 })
+      .$type<RedFlagStatus>()
+      .notNull()
+      .default("new"),
+    source: varchar("source", { length: 24 }).notNull().default("manual"),
+    actionId: foreignId("action_id"),
+    closureEvidence: varchar("closure_evidence", { length: 2000 }),
+    exceptionReason: varchar("exception_reason", { length: 1000 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: "date" }),
+  },
+  (table) => [
+    index("red_flags_holding_company_status_index").on(
+      table.holdingId,
+      table.companyId,
+      table.status,
+    ),
+    index("red_flags_kpi_period_index").on(table.kpiId, table.period),
+    index("red_flags_owner_deadline_index").on(
+      table.ownerUserId,
+      table.deadline,
+    ),
+  ],
+);
+
+export const redFlagRules = pgTable(
+  "red_flag_rules",
+  {
+    id: id(),
+    holdingId: foreignId("holding_id")
+      .references((): AnyPgColumn => holdings.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "cascade" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "cascade" },
+    ),
+    kpiId: foreignId("kpi_id").references(
+      (): AnyPgColumn => kpiManagementKpis.id,
+      { onDelete: "cascade" },
+    ),
+    trigger: varchar("trigger", { length: 40 }).notNull(),
+    configuration: json("configuration")
+      .$type<JsonValue>()
+      .notNull()
+      .default(sql`'{}'::json`),
+    severity: varchar("severity", { length: 16 }).notNull().default("high"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("red_flag_rules_scope_enabled_index").on(
+      table.holdingId,
+      table.companyId,
+      table.enabled,
     ),
   ],
 );
@@ -655,13 +1916,22 @@ export const correctiveActions = pgTable(
     successMetric: varchar("success_metric", { length: 240 })
       .notNull()
       .default(""),
+    baseline: numeric("baseline", { precision: 14, scale: 4, mode: "string" }),
+    target: numeric("target", { precision: 14, scale: 4, mode: "string" }),
     ownerUserId: foreignId("owner_user_id")
       .references((): AnyPgColumn => users.id, { onDelete: "restrict" })
       .notNull(),
+    approverUserId: foreignId("approver_user_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" },
+    ),
     createdBy: foreignId("created_by")
       .references((): AnyPgColumn => users.id, { onDelete: "restrict" })
       .notNull(),
-    status: varchar("status", { length: 16 }).$type<ActionStatus>().notNull(),
+    status: varchar("status", { length: 40 }).$type<ActionStatus>().notNull(),
+    progress: integer("progress").notNull().default(0),
+    blockerReason: text("blocker_reason"),
+    delayReason: text("delay_reason"),
     priority: varchar("priority", { length: 80 }).notNull(),
     dueAt: timestamp("due_at", { withTimezone: true, mode: "date" }),
     createdAt: createdAt(),
@@ -678,6 +1948,62 @@ export const correctiveActions = pgTable(
       table.ownerUserId,
       table.status,
     ),
+  ],
+);
+
+export const correctiveActionEvidence = pgTable(
+  "corrective_action_evidence",
+  {
+    id: id(),
+    actionId: foreignId("action_id")
+      .references((): AnyPgColumn => correctiveActions.id, {
+        onDelete: "restrict",
+      })
+      .notNull(),
+    uploadedBy: foreignId("uploaded_by")
+      .references((): AnyPgColumn => users.id, { onDelete: "restrict" })
+      .notNull(),
+    storageKey: varchar("storage_key", { length: 500 }).notNull(),
+    originalFileName: varchar("original_file_name", { length: 255 }).notNull(),
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    fileSize: integer("file_size").notNull(),
+    note: varchar("note", { length: 1000 }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("corrective_action_evidence_action_created_index").on(
+      table.actionId,
+      table.createdAt,
+    ),
+    index("corrective_action_evidence_uploader_index").on(table.uploadedBy),
+  ],
+);
+
+export const managementDecisionActions = pgTable(
+  "management_decision_actions",
+  {
+    id: id(),
+    decisionId: foreignId("decision_id")
+      .references((): AnyPgColumn => managementDecisions.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    actionId: foreignId("action_id")
+      .references((): AnyPgColumn => correctiveActions.id, {
+        onDelete: "restrict",
+      })
+      .notNull(),
+    createdBy: foreignId("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("management_decision_actions_pair_unique").on(
+      table.decisionId,
+      table.actionId,
+    ),
+    index("management_decision_actions_action_index").on(table.actionId),
   ],
 );
 
@@ -961,6 +2287,28 @@ export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 export type Department = InferSelectModel<typeof departments>;
 export type NewDepartment = InferInsertModel<typeof departments>;
+export type Holding = InferSelectModel<typeof holdings>;
+export type NewHolding = InferInsertModel<typeof holdings>;
+export type Company = InferSelectModel<typeof companies>;
+export type NewCompany = InferInsertModel<typeof companies>;
+export type Branch = InferSelectModel<typeof branches>;
+export type NewBranch = InferInsertModel<typeof branches>;
+export type BusinessUnit = InferSelectModel<typeof businessUnits>;
+export type NewBusinessUnit = InferInsertModel<typeof businessUnits>;
+export type RoleRecord = InferSelectModel<typeof roles>;
+export type NewRoleRecord = InferInsertModel<typeof roles>;
+export type PermissionRecord = InferSelectModel<typeof permissions>;
+export type NewPermissionRecord = InferInsertModel<typeof permissions>;
+export type Membership = InferSelectModel<typeof memberships>;
+export type NewMembership = InferInsertModel<typeof memberships>;
+export type MembershipRole = InferSelectModel<typeof membershipRoles>;
+export type NewMembershipRole = InferInsertModel<typeof membershipRoles>;
+export type Invitation = InferSelectModel<typeof invitations>;
+export type NewInvitation = InferInsertModel<typeof invitations>;
+export type AuthSession = InferSelectModel<typeof authSessions>;
+export type NewAuthSession = InferInsertModel<typeof authSessions>;
+export type RefreshToken = InferSelectModel<typeof refreshTokens>;
+export type NewRefreshToken = InferInsertModel<typeof refreshTokens>;
 export type AccessLevel = InferSelectModel<typeof accessLevels>;
 export type NewAccessLevel = InferInsertModel<typeof accessLevels>;
 export type AccessLevelPermission = InferSelectModel<
@@ -1011,6 +2359,13 @@ export type ActionPriority = InferSelectModel<typeof actionPriorities>;
 export type NewActionPriority = InferInsertModel<typeof actionPriorities>;
 export type CorrectiveAction = InferSelectModel<typeof correctiveActions>;
 export type NewCorrectiveAction = InferInsertModel<typeof correctiveActions>;
+export type Dashboard = InferSelectModel<typeof dashboards>;
+export type NewDashboard = InferInsertModel<typeof dashboards>;
+export type DashboardWidget = InferSelectModel<typeof dashboardWidgets>;
+export type DerivedKpi = InferSelectModel<typeof derivedKpis>;
+export type ManagementReviewMeeting = InferSelectModel<
+  typeof managementReviewMeetings
+>;
 export type SmsIppanelSetting = InferSelectModel<typeof smsIppanelSettings>;
 export type NewSmsIppanelSetting = InferInsertModel<typeof smsIppanelSettings>;
 export type SmsIppanelCreditAlert = InferSelectModel<

@@ -23,6 +23,7 @@
 /apps/api/dist
 /.tmp
 /api-start.log
+/seed-output/role-preview-credentials.txt
 
 # misc
 .DS_Store

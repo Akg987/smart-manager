@@ -1,5 +1,13 @@
 import Link from "next/link";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   AvatarRemoveButton,
   DemoForm,
   ModuleToggle,
@@ -10,6 +18,7 @@ import { getRoutePage, type RoutePage } from "./route-catalog";
 import { serverApi } from "@/lib/api-server";
 import { PerformanceBoard } from "./performance-pages";
 import { OrganizationBoard } from "./organization-pages";
+import { AcceptInvitationBoard, TenantAdminBoard } from "./tenant-admin-pages";
 import { ProfileBoard } from "./profile-pages";
 import {
   AuditBoard,
@@ -17,6 +26,15 @@ import {
   SettingsBoard,
   WeeklyBoard,
 } from "./system-pages";
+import {
+  KpiDataEntryPage,
+  KpiDetailPage,
+  KpiHistoryPage,
+  KpiReviewPage,
+  ObservationPage,
+  RedFlagPage,
+} from "./kpi-governance";
+import { Phase4Page } from "./phase4-client";
 
 type RecordValue = Record<string, unknown>;
 const columns: Partial<
@@ -158,16 +176,54 @@ function StatCard({
 
 async function Dashboard() {
   const [me, kpis, actions] = await Promise.all([
-    serverApi<{ user?: { firstName?: string | null } }>("auth/me"),
+    serverApi<{
+      user?: { firstName?: string | null };
+      authContext?: { companyId?: string | null; scopeType?: string };
+      memberships?: { companyId: string; companyName: string }[];
+      permissions?: string[];
+    }>("auth/me"),
     serverApi<{ dashboard: RecordValue | null }>("dashboard/kpis"),
     serverApi<{ dashboard: RecordValue | null }>("dashboard/actions"),
   ]);
   const kpi = kpis.data?.dashboard ?? {};
   const action = actions.data?.dashboard ?? {};
   const firstName = me.data?.user?.firstName?.trim() || "کاربر";
+  const context = me.data?.authContext;
+  const permissions = new Set(me.data?.permissions ?? []);
+  const dashboardPersona = permissions.has("kpi.review")
+    ? "نمای مدیریتی و بازبینی"
+    : permissions.has("action.approve")
+      ? "نمای مدیریت عملیات"
+      : permissions.has("kpi.submit")
+        ? "نمای اجرای شاخص‌ها"
+        : "نمای عملکرد سازمان";
+  const company = me.data?.memberships?.find(
+    (item) => item.companyId === context?.companyId,
+  );
+  const scopeNames: Record<string, string> = {
+    holding: "کل هلدینگ",
+    company: "سطح شرکت",
+    branch: "سطح شعبه",
+    businessUnit: "سطح واحد کسب‌وکار",
+    domain: "دامنهٔ تخصصی",
+  };
+  const dashboardScope =
+    context?.scopeType === "holding"
+      ? "کل هلدینگ"
+      : [
+          company?.companyName,
+          scopeNames[context?.scopeType ?? ""] ?? "محدودهٔ جاری",
+        ]
+          .filter(Boolean)
+          .join(" · ");
   const total = asNumber(kpi.total);
   const submitted = asNumber(kpi.submitted);
   const dueCount = asNumber(kpi.dueCount, Math.max(0, total - submitted));
+  const staleCount = asNumber(kpi.staleCount);
+  const missingCount = asNumber(
+    kpi.missingCount,
+    Math.max(0, dueCount - staleCount),
+  );
   const completionLabel =
     typeof kpi.completionLabel === "string"
       ? kpi.completionLabel
@@ -203,12 +259,21 @@ async function Dashboard() {
       <div className="nk-block-head nk-block-head-sm">
         <div className="nk-block-between">
           <div className="nk-block-head-content">
-            <span className="overline-title">مرکز فرمان</span>
+            <span className="overline-title">{dashboardPersona}</span>
             <h3 className="nk-block-title page-title">
               سلام {firstName} عزیز، امروز روی چه چیزی تمرکز می‌کنیم؟
             </h3>
-            <div className="nk-block-des text-soft">
+            <div className="nk-block-des text-soft flex flex-wrap items-center gap-x-3 gap-y-1">
               <CommandStatusLine />
+              {dashboardScope && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-canvas px-3 py-1 text-xs font-medium text-brand-muted">
+                  <span
+                    className="size-1.5 rounded-full bg-brand-copper"
+                    aria-hidden="true"
+                  />
+                  نمای دسترسی: {dashboardScope}
+                </span>
+              )}
             </div>
           </div>
           <div className="nk-block-head-content">
@@ -226,202 +291,219 @@ async function Dashboard() {
           </div>
         )}
         <div className="row g-gs">
-          <StatCard
-            href="/checkins"
-            tone="teal"
-            label="تکمیل داده"
-            value={completionLabel}
-            detail={`${faNum(submitted)} از ${faNum(total)} شاخص دوره جاری`}
-          />
-          <StatCard
-            href="/kpis"
-            tone="orange"
-            label="KPI نیازمند توجه"
-            value={attentionLabel}
-            detail={`${faNum(dueCount)} مورد بدون ثبت این دوره`}
-          />
-          <StatCard
-            href="/alerts"
-            tone="rose"
-            label="هشدار باز"
-            value={openAlertsLabel}
-            detail={`${faNum(action.critical)} هشدار بحرانی`}
-          />
-          <StatCard
-            href="/actions"
-            tone="ink"
-            label="اقدام معوق"
-            value={overdueLabel}
-            detail="پیگیری تا پایان امروز"
-          />
-          <div className="col-md-6">
-            <div className="card card-bordered h-100 sm-health-panel">
-              <div className="card-inner">
-                <div className="d-flex justify-content-between align-items-start mb-3">
-                  <div>
-                    <span className="overline-title">سلامت سبد KPI</span>
-                    <h6 className="title mb-0">روند هشت ثبت اخیر</h6>
+          {permissions.has("kpi.view") && (
+            <StatCard
+              href="/checkins"
+              tone="teal"
+              label="تکمیل داده"
+              value={completionLabel}
+              detail={`${faNum(submitted)} از ${faNum(total)} شاخص دوره جاری`}
+            />
+          )}
+          {permissions.has("kpi.view") && (
+            <StatCard
+              href="/kpis"
+              tone="orange"
+              label="KPI نیازمند توجه"
+              value={attentionLabel}
+              detail={`${faNum(staleCount)} شاخص کهنه، ${faNum(missingCount)} شاخص بدون داده`}
+            />
+          )}
+          {permissions.has("alert.view") && (
+            <StatCard
+              href="/alerts"
+              tone="rose"
+              label="هشدار باز"
+              value={openAlertsLabel}
+              detail={`${faNum(action.critical)} هشدار بحرانی`}
+            />
+          )}
+          {permissions.has("action.view") && (
+            <StatCard
+              href="/actions"
+              tone="ink"
+              label="اقدام معوق"
+              value={overdueLabel}
+              detail="پیگیری تا پایان امروز"
+            />
+          )}
+          {permissions.has("kpi.view") && (
+            <div className="col-md-6">
+              <div className="card card-bordered h-100 sm-health-panel">
+                <div className="card-inner">
+                  <div className="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <span className="overline-title">سلامت سبد KPI</span>
+                      <h6 className="title mb-0">روند هشت ثبت اخیر</h6>
+                    </div>
+                    <span
+                      className={`badge badge-dim ${improving ? "bg-success" : "bg-outline-light"}`}
+                    >
+                      {improving ? "رو به بهبود" : "بدون تغییر مشخص"}
+                    </span>
                   </div>
-                  <span
-                    className={`badge badge-dim ${improving ? "bg-success" : "bg-outline-light"}`}
-                  >
-                    {improving ? "رو به بهبود" : "بدون تغییر مشخص"}
-                  </span>
-                </div>
-                <div className="sm-trend" aria-label="روند هشت ثبت اخیر">
-                  {bars.map((bar, index) => {
-                    const health = String(bar.health ?? "unknown");
-                    const height = Math.max(8, asNumber(bar.height, 12));
-                    return (
-                      <span
-                        key={index}
-                        className={`is-${health}`}
-                        style={{ height: `${height}%` }}
-                      />
-                    );
-                  })}
-                </div>
-                <div className="sm-trend-labels">
-                  <span>۸ دوره قبل</span>
-                  <span>امروز</span>
-                </div>
-                <div className="sm-health-legend">
-                  <span>
-                    <i className="sm-legend-dot is-green" /> سبز{" "}
-                    {faNum(kpi.green)}
-                  </span>
-                  <span>
-                    <i className="sm-legend-dot is-yellow" /> زرد{" "}
-                    {faNum(kpi.yellow)}
-                  </span>
-                  <span>
-                    <i className="sm-legend-dot is-red" /> قرمز {faNum(kpi.red)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-6">
-            <div className="card card-bordered h-100">
-              <div className="card-inner">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span className="overline-title">اولویت‌های امروز</span>
-                    <h6 className="title mb-0">
-                      سه موردی که باید تصمیم بگیرند
-                    </h6>
-                  </div>
-                  <Link href="/alerts" className="link">
-                    همه هشدارها
-                  </Link>
-                </div>
-                <div className="sm-mini-list">
-                  {priorities.length === 0 ? (
-                    <p className="text-soft mb-0">
-                      هشدار فوری ندارید. همه‌چیز برای شروع روز آماده است.
-                    </p>
-                  ) : (
-                    priorities.map((item, index) => (
-                      <Link href="/alerts" key={String(item.id ?? index)}>
+                  <div className="sm-trend" aria-label="روند هشت ثبت اخیر">
+                    {bars.map((bar, index) => {
+                      const health = String(bar.health ?? "unknown");
+                      const height = Math.max(8, asNumber(bar.height, 12));
+                      return (
                         <span
-                          className={`sm-priority-num ${item.tone === "is-high" || item.tone === "high" ? "is-high" : ""}`}
-                        >
-                          {faNum(index + 1)}
-                        </span>
-                        <span className="sm-mini-copy">
-                          <strong>{String(item.title ?? "")}</strong>
-                          <small>
-                            {String(item.description ?? "نیازمند تصمیم مدیر")}
-                          </small>
-                        </span>
-                        <span
-                          className={`badge badge-dim ${item.tone === "is-high" || item.tone === "high" ? "bg-danger" : "bg-outline-warning"}`}
-                        >
-                          {String(item.severityLabel ?? item.severity ?? "")}
-                        </span>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-6">
-            <div className="card card-bordered h-100">
-              <div className="card-inner">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span className="overline-title">ثبت‌های من</span>
-                    <h6 className="title mb-0">نزدیک به موعد</h6>
+                          key={index}
+                          className={`is-${health}`}
+                          style={{ height: `${height}%` }}
+                        />
+                      );
+                    })}
                   </div>
-                  <Link href="/checkins" className="link">
-                    مشاهده همه
-                  </Link>
-                </div>
-                <div className="sm-mini-list">
-                  {due.length === 0 ? (
-                    <p className="text-soft mb-0">
-                      ثبت بازی ندارید. ثبت‌های این دوره تکمیل شده‌اند.
-                    </p>
-                  ) : (
-                    due.map((item) => (
-                      <Link href={`/kpis/${item.id}`} key={String(item.id)}>
-                        <span className="sm-priority-num">↗</span>
-                        <span className="sm-mini-copy">
-                          <strong>{String(item.name ?? "")}</strong>
-                          <small>موعد: {faNum(item.period)}</small>
-                        </span>
-                        <span className="badge badge-dim bg-outline-warning">
-                          پیش‌نویس
-                        </span>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-6">
-            <div className="card card-bordered h-100">
-              <div className="card-inner">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span className="overline-title">پیگیری اقدام</span>
-                    <h6 className="title mb-0">کارهای باز تیم</h6>
+                  <div className="sm-trend-labels">
+                    <span>۸ دوره قبل</span>
+                    <span>امروز</span>
                   </div>
-                  <Link href="/actions" className="link">
-                    مرکز اقدام
-                  </Link>
-                </div>
-                <div className="sm-mini-list">
-                  {teamActions.length === 0 ? (
-                    <p className="text-soft mb-0">اقدام بازی وجود ندارد.</p>
-                  ) : (
-                    teamActions.map((item, index) => (
-                      <Link
-                        href="/actions"
-                        className="sm-mini-row"
-                        key={String(item.id ?? index)}
-                      >
-                        <span className="sm-priority-num">
-                          {faNum(index + 1)}
-                        </span>
-                        <span className="sm-mini-copy">
-                          <strong>{String(item.title ?? "")}</strong>
-                          <small>
-                            مسئول: {String(item.owner ?? "تعیین نشده")}
-                          </small>
-                        </span>
-                        <span className="text-soft small">
-                          {String(item.dueAt ?? item.due ?? "بدون موعد")}
-                        </span>
-                      </Link>
-                    ))
-                  )}
+                  <div className="sm-health-legend">
+                    <span>
+                      <i className="sm-legend-dot is-green" /> سبز{" "}
+                      {faNum(kpi.green)}
+                    </span>
+                    <span>
+                      <i className="sm-legend-dot is-yellow" /> زرد{" "}
+                      {faNum(kpi.yellow)}
+                    </span>
+                    <span>
+                      <i className="sm-legend-dot is-red" /> قرمز{" "}
+                      {faNum(kpi.red)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+          {permissions.has("alert.view") && (
+            <div className="col-md-6">
+              <div className="card card-bordered h-100">
+                <div className="card-inner">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <span className="overline-title">اولویت‌های امروز</span>
+                      <h6 className="title mb-0">
+                        سه موردی که باید تصمیم بگیرند
+                      </h6>
+                    </div>
+                    <Link href="/alerts" className="link">
+                      همه هشدارها
+                    </Link>
+                  </div>
+                  <div className="sm-mini-list">
+                    {priorities.length === 0 ? (
+                      <p className="text-soft mb-0">
+                        هشدار فوری ندارید. همه‌چیز برای شروع روز آماده است.
+                      </p>
+                    ) : (
+                      priorities.map((item, index) => (
+                        <Link href="/alerts" key={String(item.id ?? index)}>
+                          <span
+                            className={`sm-priority-num ${item.tone === "is-high" || item.tone === "high" ? "is-high" : ""}`}
+                          >
+                            {faNum(index + 1)}
+                          </span>
+                          <span className="sm-mini-copy">
+                            <strong>{String(item.title ?? "")}</strong>
+                            <small>
+                              {String(item.description ?? "نیازمند تصمیم مدیر")}
+                            </small>
+                          </span>
+                          <span
+                            className={`badge badge-dim ${item.tone === "is-high" || item.tone === "high" ? "bg-danger" : "bg-outline-warning"}`}
+                          >
+                            {String(item.severityLabel ?? item.severity ?? "")}
+                          </span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {permissions.has("kpi.submit") && (
+            <div className="col-md-6">
+              <div className="card card-bordered h-100">
+                <div className="card-inner">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <span className="overline-title">ثبت‌های من</span>
+                      <h6 className="title mb-0">نزدیک به موعد</h6>
+                    </div>
+                    <Link href="/checkins" className="link">
+                      مشاهده همه
+                    </Link>
+                  </div>
+                  <div className="sm-mini-list">
+                    {due.length === 0 ? (
+                      <p className="text-soft mb-0">
+                        ثبت بازی ندارید. ثبت‌های این دوره تکمیل شده‌اند.
+                      </p>
+                    ) : (
+                      due.map((item) => (
+                        <Link href={`/kpis/${item.id}`} key={String(item.id)}>
+                          <span className="sm-priority-num">↗</span>
+                          <span className="sm-mini-copy">
+                            <strong>{String(item.name ?? "")}</strong>
+                            <small>موعد: {faNum(item.period)}</small>
+                          </span>
+                          <span className="badge badge-dim bg-outline-warning">
+                            پیش‌نویس
+                          </span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {permissions.has("action.view") && (
+            <div className="col-md-6">
+              <div className="card card-bordered h-100">
+                <div className="card-inner">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <span className="overline-title">پیگیری اقدام</span>
+                      <h6 className="title mb-0">کارهای باز تیم</h6>
+                    </div>
+                    <Link href="/actions" className="link">
+                      مرکز اقدام
+                    </Link>
+                  </div>
+                  <div className="sm-mini-list">
+                    {teamActions.length === 0 ? (
+                      <p className="text-soft mb-0">اقدام بازی وجود ندارد.</p>
+                    ) : (
+                      teamActions.map((item, index) => (
+                        <Link
+                          href="/actions"
+                          className="sm-mini-row"
+                          key={String(item.id ?? index)}
+                        >
+                          <span className="sm-priority-num">
+                            {faNum(index + 1)}
+                          </span>
+                          <span className="sm-mini-copy">
+                            <strong>{String(item.title ?? "")}</strong>
+                            <small>
+                              مسئول: {String(item.owner ?? "تعیین نشده")}
+                            </small>
+                          </span>
+                          <span className="text-soft small">
+                            {String(item.dueAt ?? item.due ?? "بدون موعد")}
+                          </span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -453,25 +535,25 @@ async function CollectionTable({
             {result.error}
           </p>
         )}
-        <div className="sm-table-wrap mt-3">
-          <table className="table table-tranx">
-            <thead>
-              <tr>
+        <div className="mt-3">
+          <Table className="min-w-[680px]">
+            <TableHeader>
+              <TableRow>
                 {definition.labels.map((item) => (
-                  <th key={item}>{item}</th>
+                  <TableHead key={item}>{item}</TableHead>
                 ))}
-                {collection === "modules" && <th>عملیات</th>}
-              </tr>
-            </thead>
-            <tbody>
+                {collection === "modules" && <TableHead>عملیات</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row, index) => (
-                <tr key={String(row.id ?? index)}>
+                <TableRow key={String(row.id ?? index)}>
                   {definition.keys.map((key) => (
-                    <td key={key}>
+                    <TableCell key={key}>
                       {collection === "access-levels" && key === "name" ? (
                         <Link
                           href={`/admin/access-levels/${row.id}/edit`}
-                          className="link-primary"
+                          className="text-blue-700 underline-offset-4 hover:underline"
                         >
                           {format(row.name)}
                         </Link>
@@ -484,32 +566,32 @@ async function CollectionTable({
                             : row[key],
                         )
                       )}
-                    </td>
+                    </TableCell>
                   ))}
                   {collection === "modules" && (
-                    <td>
+                    <TableCell>
                       <ModuleToggle
                         slug={String(row.slug)}
                         active={row.isActive === true}
                       />
-                    </td>
+                    </TableCell>
                   )}
-                </tr>
+                </TableRow>
               ))}
               {rows.length === 0 && (
-                <tr>
-                  <td
+                <TableRow>
+                  <TableCell
                     colSpan={definition.labels.length}
-                    className="py-5 text-center text-soft"
+                    className="py-5 text-center text-neutral-500"
                   >
                     {result.error
                       ? "برای این حساب داده‌ای در دسترس نیست."
                       : "داده‌ای برای نمایش وجود ندارد."}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
@@ -543,9 +625,9 @@ async function FormPage({
     ],
     kpi: [
       {
-        name: "departmentId",
+        name: "businessUnitId",
         label: "شناسه واحد",
-        type: "number",
+        type: "select",
         required: true,
       },
       { name: "code", label: "کد شاخص", required: true },
@@ -563,7 +645,84 @@ async function FormPage({
         type: "number",
         required: true,
       },
-      { name: "ownerUserId", label: "شناسه مسئول", type: "number" },
+      {
+        name: "ownerUserId",
+        label: "مسئول شاخص",
+        type: "select",
+        required: true,
+      },
+      {
+        name: "dataOwnerUserId",
+        label: "مالک داده",
+        type: "select",
+        required: true,
+      },
+      {
+        name: "reporterUserId",
+        label: "گزارشگر داده",
+        type: "select",
+        required: true,
+      },
+      {
+        name: "reviewerUserId",
+        label: "بازبین داده",
+        type: "select",
+        required: true,
+      },
+      { name: "source", label: "منبع داده", required: true },
+      { name: "domain", label: "حوزه شاخص" },
+      { name: "unit", label: "واحد سنجش" },
+      { name: "frequency", label: "تناوب گزارش" },
+      {
+        name: "inputMode",
+        label: "نوع ورودی",
+        type: "select",
+        options: [
+          "direct",
+          "numeric",
+          "percentage",
+          "currency",
+          "count",
+          "ratio",
+          "text",
+          "textarea",
+          "select",
+          "multi-select",
+          "formula",
+          "descriptive",
+        ],
+      },
+      {
+        name: "formulaType",
+        label: "عملیات فرمول",
+        type: "select",
+        options: [
+          "sum",
+          "average",
+          "product",
+          "difference",
+          "ratio",
+          "percentage",
+        ],
+      },
+      {
+        name: "inputOptions",
+        label: "گزینه‌های ورودی (با ویرگول جدا کنید)",
+        hint: "برای نوع انتخابی و چندانتخابی وارد کنید.",
+      },
+      { name: "rangeMinimum", label: "حداقل بازه", type: "number" },
+      { name: "rangeMaximum", label: "حداکثر بازه", type: "number" },
+      { name: "reportingPeriod", label: "دوره گزارش", value: "monthly" },
+      {
+        name: "submissionDeadline",
+        label: "آخرین مهلت گزارش (میلادی)",
+        placeholder: "2026-12-31",
+      },
+      {
+        name: "effectiveFrom",
+        label: "تاریخ اثر نسخه (میلادی)",
+        placeholder: "2026-10-09",
+      },
       { name: "description", label: "شرح شاخص", type: "textarea" },
     ],
     checkin: [
@@ -597,6 +756,12 @@ async function FormPage({
       {
         name: "ownerUserId",
         label: "شناسه مسئول",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "approverUserId",
+        label: "Approver user ID",
         type: "number",
         required: true,
       },
@@ -702,6 +867,44 @@ async function FormPage({
     "profile-photo": { endpoint: "/api/users/me/avatar", method: "POST" },
   };
   let fields = fieldsByForm[form ?? ""] ?? [];
+  if (form === "kpi" && path === "/kpis/create") {
+    const result = await serverApi<RecordValue>("kpis/form");
+    const businessUnits = Array.isArray(result.data?.businessUnits)
+      ? (result.data.businessUnits as RecordValue[])
+      : [];
+    const people = Array.isArray(result.data?.people)
+      ? (result.data.people as RecordValue[])
+      : [];
+    fields = fields.map((field) => {
+      if (field.name === "businessUnitId")
+        return {
+          ...field,
+          options: businessUnits.map((row) => ({
+            value: String(row.id),
+            label: String(row.name),
+          })),
+        };
+      if (
+        [
+          "ownerUserId",
+          "dataOwnerUserId",
+          "reporterUserId",
+          "reviewerUserId",
+        ].includes(field.name)
+      )
+        return {
+          ...field,
+          type: "select",
+          options: people.map((person) => ({
+            value: String(person.id),
+            label:
+              `${String(person.firstName ?? "")} ${String(person.lastName ?? "")}`.trim() ||
+              String(person.mobile),
+          })),
+        };
+      return field;
+    });
+  }
   const editMatch =
     form === "access-level"
       ? path?.match(/\/admin\/access-levels\/(\d+)\/edit$/)
@@ -727,10 +930,24 @@ async function FormPage({
       }));
   }
   const config = form ? endpoints[form] : undefined;
+  const formTitles: Record<string, string> = {
+    "access-level": "سطح دسترسی",
+    "profile-personal": "اطلاعات شخصی",
+    "profile-photo": "عکس پروفایل",
+    "profile-security": "تنظیمات امنیتی",
+    "settings-general": "تنظیمات عمومی",
+    "settings-roles": "نقش‌ها و مجوزها",
+    department: "واحد سازمانی",
+    action: "اقدام",
+    checkin: "ثبت داده KPI",
+    kpi: "تعریف شاخص",
+    priority: "اولویت اقدام",
+    sms: "تنظیمات پیامک",
+  };
   return (
     <div className="card card-bordered">
       <div className="card-inner">
-        <h2 className="title">{form ?? "فرم"}</h2>
+        <h2 className="title">{formTitles[form ?? ""] ?? "فرم"}</h2>
         {config ? (
           <>
             <DemoForm
@@ -738,6 +955,7 @@ async function FormPage({
               submitLabel="ذخیره"
               endpoint={config.endpoint}
               method={config.method}
+              redirectOnCreate={form === "kpi" && path === "/kpis/create"}
             />
             {form === "profile-photo" && <AvatarRemoveButton />}
           </>
@@ -760,6 +978,21 @@ export async function WorkspacePage({
   tab?: string;
   view?: string;
 }) {
+  if (
+    /^\/(dashboards|formulas|decisions|management-reviews|management-automation)(?:\/|$)/.test(
+      page.path,
+    )
+  )
+    return <Phase4Page />;
+  if (page.path === "/checkins/review") return <KpiReviewPage />;
+  if (page.path === "/red-flags") return <RedFlagPage />;
+  if (page.path === "/observations") return <ObservationPage />;
+  if (/^\/kpis\/[^/]+\/data$/.test(page.path)) return <KpiDataEntryPage />;
+  if (/^\/kpis\/[^/]+\/history$/.test(page.path)) return <KpiHistoryPage />;
+  if (page.path !== "/kpis/create" && /^\/kpis\/[^/]+$/.test(page.path))
+    return <KpiDetailPage />;
+  if (page.path === "/admin/tenants") return <TenantAdminBoard />;
+  if (page.path === "/accept-invitation") return <AcceptInvitationBoard />;
   if (page.kind === "board" && page.board)
     return PerformanceBoard({ page, view });
   if (page.kind === "directory") return OrganizationBoard({ page });
@@ -784,7 +1017,7 @@ export async function WorkspacePage({
     content = (
       <CollectionTable collection={page.collection} label={page.title} />
     );
-  else if (page.kind === "form" || page.kind === "profile")
+  else if (page.kind === "form")
     content = <FormPage form={page.form} path={page.path} />;
   else if (page.kind === "settings" && page.form === "settings-roles")
     content = <AccessLevelsPanel />;

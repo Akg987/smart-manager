@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { parseApiBody } from "@/lib/api";
+import { apiFetch, parseApiBody } from "@/lib/api";
 
 function faNum(value: unknown) {
   return String(value ?? 0).replace(
@@ -17,7 +17,7 @@ async function send(
   body?: Record<string, unknown> | FormData,
 ) {
   const isForm = body instanceof FormData;
-  const response = await fetch(endpoint, {
+  const response = await apiFetch(endpoint, {
     method,
     credentials: "same-origin",
     headers: isForm

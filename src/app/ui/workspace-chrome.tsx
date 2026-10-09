@@ -3,18 +3,64 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { CompanySwitcher } from "@/components/company-switcher";
+import { useAuthContext } from "@/contexts/auth-context";
+import { apiFetch } from "@/lib/api";
 
 const beforeOrg = [
   { label: "نمای کلی", href: "/dashboard", icon: "ni-grid-alt" },
-  { label: "ثبت‌های من", href: "/checkins", icon: "ni-edit" },
-  { label: "هشدارها", href: "/alerts", icon: "ni-alert-circle" },
-  { label: "اقدام‌ها", href: "/actions", icon: "ni-check-circle" },
-  { label: "استودیو KPI", href: "/kpis", icon: "ni-growth" },
+  {
+    label: "ثبت‌های من",
+    href: "/checkins",
+    icon: "ni-edit",
+    permission: "kpi.submit",
+  },
+  {
+    label: "بررسی ثبت‌ها",
+    href: "/checkins/review",
+    icon: "ni-check-circle",
+    permission: "kpi.review",
+  },
+  {
+    label: "مشاهدات مدیریتی",
+    href: "/observations",
+    icon: "ni-eye",
+    permission: "company.view",
+  },
+  {
+    label: "پرچم‌های قرمز",
+    href: "/red-flags",
+    icon: "ni-alert",
+    permission: "redflag.view",
+  },
+  {
+    label: "هشدارها",
+    href: "/alerts",
+    icon: "ni-alert-circle",
+    permission: "alert.view",
+  },
+  {
+    label: "اقدام‌ها",
+    href: "/actions",
+    icon: "ni-check-circle",
+    permission: "action.view",
+  },
+  {
+    label: "استودیو KPI",
+    href: "/kpis",
+    icon: "ni-growth",
+    permission: "kpi.view",
+  },
 ];
 
 const orgLinks = [
-  { label: "کاربران", href: "/admin/users" },
-  { label: "واحدهای سازمانی", href: "/admin/departments" },
+  { label: "کاربران", href: "/admin/users", permission: "users.view" },
+  {
+    label: "واحدهای سازمانی",
+    href: "/admin/departments",
+    permission: "unit.view",
+  },
+  { label: "ساختار شرکت", href: "/admin/tenants", permission: "company.view" },
 ];
 
 const profileLinks = [
@@ -24,10 +70,60 @@ const profileLinks = [
 ];
 
 const afterOrg = [
-  { label: "گزارش هفتگی", href: "/kpi-reports/weekly", icon: "ni-reports" },
-  { label: "ماژول‌ها", href: "/admin/modules", icon: "ni-puzzle" },
-  { label: "تاریخچه تغییرات", href: "/admin/audit-log", icon: "ni-clock" },
-  { label: "تنظیمات", href: "/settings", icon: "ni-setting" },
+  {
+    label: "Dashboard Builder",
+    href: "/dashboards",
+    icon: "ni-grid-alt",
+    permission: "dashboard.view",
+  },
+  {
+    label: "Formula Studio",
+    href: "/formulas",
+    icon: "ni-calculator",
+    permission: "formula.view",
+  },
+  {
+    label: "Decisions",
+    href: "/decisions",
+    icon: "ni-check-circle",
+    permission: "decision.view",
+  },
+  {
+    label: "WBR / MBR",
+    href: "/management-reviews",
+    icon: "ni-reports",
+    permission: "meeting.view",
+  },
+  {
+    label: "Reminders & Escalation",
+    href: "/management-automation",
+    icon: "ni-bell",
+    permission: "meeting.update",
+  },
+  {
+    label: "گزارش هفتگی",
+    href: "/kpi-reports/weekly",
+    icon: "ni-reports",
+    permission: "report.view",
+  },
+  {
+    label: "ماژول‌ها",
+    href: "/admin/modules",
+    icon: "ni-puzzle",
+    permission: "integration.view",
+  },
+  {
+    label: "تاریخچه تغییرات",
+    href: "/admin/audit-log",
+    icon: "ni-clock",
+    permission: "audit.view",
+  },
+  {
+    label: "تنظیمات",
+    href: "/settings",
+    icon: "ni-setting",
+    permission: "integration.manage",
+  },
 ];
 
 function jalaliHeaderDate(date = new Date()) {
@@ -139,6 +235,92 @@ function NavLink({
   );
 }
 
+function requiredPagePermission(path: string): string | null {
+  if (path === "/dashboards" || /^\/dashboards\/\d+$/.test(path))
+    return "dashboard.view";
+  if (path === "/dashboards/create") return "dashboard.create";
+  if (path === "/formulas" || /^\/formulas\/\d+$/.test(path))
+    return "formula.view";
+  if (path === "/formulas/create") return "formula.create";
+  if (path === "/decisions") return "decision.view";
+  if (path === "/management-reviews") return "meeting.view";
+  if (path === "/management-reviews/create") return "meeting.create";
+  if (/^\/management-reviews\/\d+$/.test(path)) return "meeting.view";
+  if (path === "/management-automation") return "meeting.update";
+  if (path === "/admin/users") return "users.view";
+  if (path === "/admin/departments") return "unit.view";
+  if (path === "/admin/tenants") return "company.view";
+  if (
+    path === "/admin/access-levels/create" ||
+    /^\/admin\/access-levels\/[^/]+\/edit$/.test(path)
+  )
+    return "roles.manage";
+  if (
+    path === "/admin/access-levels" ||
+    path === "/admin/roles" ||
+    path === "/settings/roles"
+  )
+    return "roles.view";
+  if (path === "/admin/audit-log") return "audit.view";
+  if (path === "/admin/modules") return "integration.view";
+  if (
+    path === "/settings" ||
+    path === "/settings/general" ||
+    path === "/settings/action-priorities" ||
+    path === "/settings/kpi-options" ||
+    path === "/sms-ippanel-hub"
+  )
+    return "integration.manage";
+  if (path === "/kpis/create") return "kpi.create";
+  if (/^\/kpis\/[^/]+\/edit$/.test(path)) return "kpi.update";
+  if (path === "/kpis" || /^\/kpis\/[^/]+(?:\/history)?$/.test(path))
+    return "kpi.view";
+  if (/^\/kpis\/[^/]+\/data$/.test(path)) return "kpi.submit";
+  if (path === "/checkins") return "kpi.submit";
+  if (path === "/checkins/review") return "kpi.review";
+  if (path === "/red-flags") return "redflag.view";
+  if (path === "/alerts") return "alert.view";
+  if (path === "/observations") return "kpi.view";
+  if (path === "/kpi-reports/weekly") return "report.view";
+  if (path === "/actions") return "action.view";
+  if (path === "/actions/create") return "action.create";
+  return null;
+}
+
+function RouteAccessBoundary({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { data, isLoading } = useAuthContext();
+  const permission = requiredPagePermission(pathname);
+  if (!permission) return children;
+  if (isLoading)
+    return (
+      <div
+        role="status"
+        className="rounded-xl border bg-card p-6 text-sm text-muted-foreground"
+      >
+        در حال بررسی دسترسی…
+      </div>
+    );
+  if (data?.permissions.includes(permission)) return children;
+  return (
+    <section
+      role="alert"
+      className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm"
+    >
+      <h1 className="text-xl font-semibold">دسترسی به این صفحه مجاز نیست</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        این بخش در مجوزهای حساب شما قرار ندارد.
+      </p>
+      <Link
+        href="/dashboard"
+        className="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-primary-foreground"
+      >
+        بازگشت به داشبورد
+      </Link>
+    </section>
+  );
+}
+
 export function WorkspaceChrome({
   children,
   title,
@@ -146,6 +328,7 @@ export function WorkspaceChrome({
   children: React.ReactNode;
   title: string;
 }) {
+  const { data: authData } = useAuthContext();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -172,6 +355,16 @@ export function WorkspaceChrome({
   const avatarSrc =
     user?.avatarPath && user.id ? `/api/users/${user.id}/avatar` : null;
   const unread = notifications.filter((item) => !item.readAt).length;
+  const permissions = new Set(authData?.permissions ?? []);
+  const visibleBeforeOrg = beforeOrg.filter(
+    (item) => !item.permission || permissions.has(item.permission),
+  );
+  const visibleOrgLinks = orgLinks.filter((item) =>
+    permissions.has(item.permission),
+  );
+  const visibleAfterOrg = afterOrg.filter((item) =>
+    permissions.has(item.permission),
+  );
 
   useEffect(() => {
     const now = new Date();
@@ -188,13 +381,14 @@ export function WorkspaceChrome({
   }, [pathname]);
   useEffect(() => {
     let active = true;
-    fetch("/api/auth/me", {
+    apiFetch("/api/auth/me", {
       credentials: "same-origin",
       headers: { "accept-language": "fa" },
     })
       .then((response) => (response.ok ? response.json() : null))
       .then((result) => {
-        const next = result?.user ?? result?.data?.user;
+        const payload = result?.data ?? result;
+        const next = payload?.user;
         if (active && next) setUser(next);
       })
       .catch(() => undefined);
@@ -204,7 +398,7 @@ export function WorkspaceChrome({
   }, []);
   useEffect(() => {
     let active = true;
-    fetch("/api/data/inbox", {
+    apiFetch("/api/data/inbox", {
       credentials: "same-origin",
       headers: { "accept-language": "fa" },
     })
@@ -226,7 +420,7 @@ export function WorkspaceChrome({
   }, []);
 
   const readAll = async () => {
-    const response = await fetch("/api/notifications/read-all", {
+    const response = await apiFetch("/api/notifications/read-all", {
       method: "PATCH",
       credentials: "same-origin",
     });
@@ -251,13 +445,13 @@ export function WorkspaceChrome({
       {mobileOpen && (
         <button
           aria-label="بستن منو"
-          className="sm-mobile-scrim xl:hidden"
+          className="fixed inset-0 z-[1020] bg-[rgba(15,18,22,0.48)] xl:hidden"
           onClick={closeSidebar}
         />
       )}
       <div className="nk-main">
         <aside
-          className={`nk-sidebar nk-sidebar-fixed is-dark sm-shell-sidebar ${mobileOpen ? "is-mobile-open" : ""}`}
+          className={`nk-sidebar nk-sidebar-fixed is-dark z-[1030] transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "translate-x-[110%] min-[1200px]:translate-x-0"}`}
           data-content="sidebarMenu"
         >
           <div className="nk-sidebar-element nk-sidebar-head">
@@ -297,7 +491,7 @@ export function WorkspaceChrome({
             <div className="nk-sidebar-content">
               <nav className="nk-sidebar-menu" aria-label="منوی اصلی">
                 <ul className="nk-menu">
-                  {beforeOrg.map((item) => (
+                  {visibleBeforeOrg.map((item) => (
                     <NavLink
                       key={item.href}
                       item={item}
@@ -305,43 +499,47 @@ export function WorkspaceChrome({
                       close={closeSidebar}
                     />
                   ))}
-                  <li
-                    className={`nk-menu-item has-sub sm-nav-group ${orgOpen ? "is-open" : ""} ${orgActive ? "active current-menu" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className="nk-menu-link sm-nav-toggle"
-                      aria-expanded={orgOpen}
-                      onClick={() => setOrgOpen((open) => !open)}
+                  {visibleOrgLinks.length > 0 && (
+                    <li
+                      className={`nk-menu-item has-sub sm-nav-group ${orgOpen ? "is-open" : ""} ${orgActive ? "active current-menu" : ""}`}
                     >
-                      <span className="nk-menu-icon">
-                        <Icon name="ni-users" />
-                      </span>
-                      <span className="nk-menu-text">سازمان و پرسنل</span>
-                      <Icon
-                        name={orgOpen ? "ni-chevron-up" : "ni-chevron-down"}
-                        className="sm-nav-caret"
-                      />
-                    </button>
-                    {orgOpen && (
-                      <ul className="sm-nav-sub">
-                        {orgLinks.map((item) => (
-                          <li key={item.href}>
-                            <Link
-                              href={item.href}
-                              onClick={closeSidebar}
-                              className={
-                                isActive(item.href, pathname) ? "is-active" : ""
-                              }
-                            >
-                              {item.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                  {afterOrg.map((item) => (
+                      <button
+                        type="button"
+                        className="nk-menu-link sm-nav-toggle"
+                        aria-expanded={orgOpen}
+                        onClick={() => setOrgOpen((open) => !open)}
+                      >
+                        <span className="nk-menu-icon">
+                          <Icon name="ni-users" />
+                        </span>
+                        <span className="nk-menu-text">سازمان و پرسنل</span>
+                        <Icon
+                          name={orgOpen ? "ni-chevron-up" : "ni-chevron-down"}
+                          className="sm-nav-caret"
+                        />
+                      </button>
+                      {orgOpen && (
+                        <ul className="sm-nav-sub">
+                          {visibleOrgLinks.map((item) => (
+                            <li key={item.href}>
+                              <Link
+                                href={item.href}
+                                onClick={closeSidebar}
+                                className={
+                                  isActive(item.href, pathname)
+                                    ? "is-active"
+                                    : ""
+                                }
+                              >
+                                {item.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  )}
+                  {visibleAfterOrg.map((item) => (
                     <NavLink
                       key={item.href}
                       item={item}
@@ -360,7 +558,7 @@ export function WorkspaceChrome({
             </div>
           </div>
         </aside>
-        <div className="nk-wrap sm-shell-main">
+        <div className="nk-wrap min-w-0">
           <header className="nk-header nk-header-fixed is-light">
             <div className="container-fluid">
               <div className="nk-header-wrap">
@@ -391,6 +589,7 @@ export function WorkspaceChrome({
                 </nav>
                 <div className="nk-header-tools">
                   <div className="sm-header-cluster">
+                    <CompanySwitcher />
                     <div
                       className={`dropdown sm-header-slot ${userOpen ? "show" : ""}`}
                     >
@@ -540,7 +739,9 @@ export function WorkspaceChrome({
           <main className="nk-content">
             <div className="container-fluid">
               <div className="nk-content-inner">
-                <div className="nk-content-body">{children}</div>
+                <div className="nk-content-body">
+                  <RouteAccessBoundary>{children}</RouteAccessBoundary>
+                </div>
               </div>
             </div>
           </main>

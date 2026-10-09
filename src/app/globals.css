@@ -12,83 +12,9 @@
   --color-brand-muted: #6f5c4e;
 }
 
-html,
-body {
-  min-height: 100%;
-}
-
-body {
-  font-family: "Doran", Tahoma, "Segoe UI", Arial, sans-serif;
-}
-
 button,
 input,
 select,
 textarea {
   font: inherit;
-}
-
-.sm-shell-main {
-  min-width: 0;
-}
-
-.sm-mobile-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 1020;
-  background: rgba(15, 18, 22, 0.48);
-}
-
-.sm-menu-chevron {
-  margin-inline-start: auto;
-  transition: transform 180ms ease;
-}
-
-.sm-menu-chevron.is-open {
-  transform: rotate(180deg);
-}
-
-.sm-shell-card {
-  min-height: 150px;
-}
-
-.sm-kpi-meter {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #f1e8e1;
-}
-
-.sm-kpi-meter > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #a17f63;
-}
-
-.sm-table-wrap {
-  overflow-x: auto;
-}
-
-.sm-table-wrap table {
-  min-width: 680px;
-}
-
-.sm-auth-error {
-  display: block;
-  margin-top: 6px;
-  color: #c84d58;
-  font-size: 12px;
-}
-
-@media (max-width: 1199px) {
-  .sm-shell-sidebar {
-    transform: translateX(110%);
-    transition: transform 180ms ease;
-    z-index: 1030;
-  }
-
-  .sm-shell-sidebar.is-mobile-open {
-    transform: translateX(0);
-  }
 }

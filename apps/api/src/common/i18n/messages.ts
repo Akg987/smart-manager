@@ -16,6 +16,91 @@ export const translations: Record<string, { fa: string; en: string }> = {
     fa: "برای ادامه باید وارد شوید.",
     en: "Authentication required.",
   },
+  "Tenant membership required.": {
+    fa: "عضویت فعال سازمانی برای ادامه لازم است.",
+    en: "An active organization membership is required.",
+  },
+  "An active company is required.": {
+    fa: "\u0628\u0631\u0627\u06cc \u0627\u062f\u0627\u0645\u0647 \u0628\u0627\u06cc\u062f \u06cc\u06a9 \u0634\u0631\u06a9\u062a \u0641\u0639\u0627\u0644 \u0627\u0646\u062a\u062e\u0627\u0628 \u0634\u0648\u062f.",
+    en: "An active company is required.",
+  },
+  "Branch does not belong to the active company.": {
+    fa: "\u0634\u0639\u0628\u0647\u0654 \u0627\u0646\u062a\u062e\u0627\u0628\u200c\u0634\u062f\u0647 \u0628\u0647 \u0634\u0631\u06a9\u062a \u0641\u0639\u0627\u0644 \u0645\u0631\u0628\u0648\u0637 \u0646\u06cc\u0633\u062a.",
+    en: "Branch does not belong to the active company.",
+  },
+  "You cannot assign a membership to yourself.": {
+    fa: "\u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u06cc\u062f \u0628\u0647 \u062e\u0648\u062f\u062a\u0627\u0646 \u0639\u0636\u0648\u06cc\u062a \u0628\u062f\u0647\u06cc\u062f.",
+    en: "You cannot assign a membership to yourself.",
+  },
+  "Business unit does not belong to the selected company and branch.": {
+    fa: "\u0648\u0627\u062d\u062f \u06a9\u0633\u0628\u200c\u0648\u06a9\u0627\u0631 \u0628\u0647 \u0634\u0631\u06a9\u062a \u0648 \u0634\u0639\u0628\u0647\u0654 \u0627\u0646\u062a\u062e\u0627\u0628\u200c\u0634\u062f\u0647 \u0645\u0631\u0628\u0648\u0637 \u0646\u06cc\u0633\u062a.",
+    en: "Business unit does not belong to the selected company and branch.",
+  },
+  "Company scope cannot include a branch or business unit.": {
+    fa: "\u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0634\u0631\u06a9\u062a \u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0634\u0639\u0628\u0647 \u06cc\u0627 \u0648\u0627\u062d\u062f \u06a9\u0633\u0628\u200c\u0648\u06a9\u0627\u0631 \u062f\u0627\u0634\u062a\u0647 \u0628\u0627\u0634\u062f.",
+    en: "Company scope cannot include a branch or business unit.",
+  },
+  "Branch scope requires a branch and cannot include a business unit.": {
+    fa: "\u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0634\u0639\u0628\u0647 \u0628\u0647 \u0634\u0639\u0628\u0647 \u0646\u06cc\u0627\u0632 \u062f\u0627\u0631\u062f \u0648 \u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u062f \u0648\u0627\u062d\u062f \u06a9\u0633\u0628\u200c\u0648\u06a9\u0627\u0631 \u0631\u0627 \u0634\u0627\u0645\u0644 \u0634\u0648\u062f.",
+    en: "Branch scope requires a branch and cannot include a business unit.",
+  },
+  "Business unit scope requires a business unit.": {
+    fa: "\u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0648\u0627\u062d\u062f \u06a9\u0633\u0628\u200c\u0648\u06a9\u0627\u0631 \u0628\u0647 \u0627\u0646\u062a\u062e\u0627\u0628 \u0648\u0627\u062d\u062f \u0646\u06cc\u0627\u0632 \u062f\u0627\u0631\u062f.",
+    en: "Business unit scope requires a business unit.",
+  },
+  "One or more roles are unavailable in this holding.": {
+    fa: "\u06cc\u06a9 \u06cc\u0627 \u0686\u0646\u062f \u0646\u0642\u0634 \u062f\u0631 \u0627\u06cc\u0646 \u0647\u0644\u062f\u06cc\u0646\u06af \u0642\u0627\u0628\u0644 \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u0646\u06cc\u0633\u062a.",
+    en: "One or more roles are unavailable in this holding.",
+  },
+  "System and root roles cannot be delegated.": {
+    fa: "\u0648\u0627\u06af\u0630\u0627\u0631\u06cc \u0646\u0642\u0634\u200c\u0647\u0627\u06cc \u0633\u06cc\u0633\u062a\u0645\u06cc \u0648 \u0631\u06cc\u0634\u0647 \u0645\u062c\u0627\u0632 \u0646\u06cc\u0633\u062a.",
+    en: "System and root roles cannot be delegated.",
+  },
+  "Role permissions exceed the assigned membership scope.": {
+    fa: "\u0645\u062c\u0648\u0632\u0647\u0627\u06cc \u0646\u0642\u0634 \u0627\u0632 \u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0639\u0636\u0648\u06cc\u062a \u062a\u0639\u06cc\u06cc\u0646\u200c\u0634\u062f\u0647 \u0641\u0631\u0627\u062a\u0631 \u0627\u0633\u062a.",
+    en: "Role permissions exceed the assigned membership scope.",
+  },
+  "Role permissions exceed the delegator's current permissions or scope.": {
+    fa: "\u0645\u062c\u0648\u0632\u0647\u0627\u06cc \u0646\u0642\u0634 \u0627\u0632 \u062f\u0633\u062a\u0631\u0633\u06cc \u06cc\u0627 \u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0641\u0639\u0644\u06cc \u0648\u0627\u06af\u0630\u0627\u0631\u06a9\u0646\u0646\u062f\u0647 \u0641\u0631\u0627\u062a\u0631 \u0627\u0633\u062a.",
+    en: "Role permissions exceed the delegator's current permissions or scope.",
+  },
+  "You cannot revoke your own membership.": {
+    fa: "\u0646\u0645\u06cc\u200c\u062a\u0648\u0627\u0646\u06cc\u062f \u0639\u0636\u0648\u06cc\u062a \u062e\u0648\u062f\u062a\u0627\u0646 \u0631\u0627 \u0644\u063a\u0648 \u06a9\u0646\u06cc\u062f.",
+    en: "You cannot revoke your own membership.",
+  },
+  "Membership not found.": {
+    fa: "\u0639\u0636\u0648\u06cc\u062a \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f.",
+    en: "Membership not found.",
+  },
+  "Invitation is invalid, expired, revoked, or belongs to another mobile number.":
+    {
+      fa: "\u062f\u0639\u0648\u062a\u200c\u0646\u0627\u0645\u0647 \u0646\u0627\u0645\u0639\u062a\u0628\u0631\u060c \u0645\u0646\u0642\u0636\u06cc\u060c \u0628\u0627\u0637\u0644\u200c\u0634\u062f\u0647 \u06cc\u0627 \u0645\u0631\u0628\u0648\u0637 \u0628\u0647 \u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06cc\u0644 \u062f\u06cc\u06af\u0631\u06cc \u0627\u0633\u062a.",
+      en: "Invitation is invalid, expired, revoked, or belongs to another mobile number.",
+    },
+  "Company not found.": {
+    fa: "\u0634\u0631\u06a9\u062a \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f.",
+    en: "Company not found.",
+  },
+  "Invitation not found.": {
+    fa: "\u062f\u0639\u0648\u062a\u200c\u0646\u0627\u0645\u0647 \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f.",
+    en: "Invitation not found.",
+  },
+  "Role permissions exceed the invitation company scope.": {
+    fa: "\u0645\u062c\u0648\u0632\u0647\u0627\u06cc \u0646\u0642\u0634 \u0627\u0632 \u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u0634\u0631\u06a9\u062a \u062f\u0631 \u062f\u0639\u0648\u062a\u200c\u0646\u0627\u0645\u0647 \u0641\u0631\u0627\u062a\u0631 \u0627\u0633\u062a.",
+    en: "Role permissions exceed the invitation company scope.",
+  },
+  "A role without permissions cannot be delegated.": {
+    fa: "\u0646\u0642\u0634 \u0628\u062f\u0648\u0646 \u0645\u062c\u0648\u0632 \u0642\u0627\u0628\u0644 \u0648\u0627\u06af\u0630\u0627\u0631\u06cc \u0646\u06cc\u0633\u062a.",
+    en: "A role without permissions cannot be delegated.",
+  },
+  "Default tenant is not configured.": {
+    fa: "\u0634\u0631\u06a9\u062a \u067e\u06cc\u0634\u200c\u0641\u0631\u0636 \u0633\u0627\u0645\u0627\u0646\u0647 \u0647\u0646\u0648\u0632 \u062a\u0646\u0638\u06cc\u0645 \u0646\u0634\u062f\u0647 \u0627\u0633\u062a.",
+    en: "Default tenant is not configured.",
+  },
+  "User has an active membership outside the approval scope.": {
+    fa: "\u06a9\u0627\u0631\u0628\u0631 \u062f\u0631 \u062d\u0648\u0632\u0647\u0654 \u062e\u0627\u0631\u062c \u0627\u0632 \u0645\u062d\u062f\u0648\u062f\u0647\u0654 \u062a\u0623\u06cc\u06cc\u062f \u0647\u0645 \u0639\u0636\u0648\u06cc\u062a \u0641\u0639\u0627\u0644 \u062f\u0627\u0631\u062f.",
+    en: "User has an active membership outside the approval scope.",
+  },
   "Invalid credentials.": {
     fa: "موبایل یا رمز عبور نادرست است.",
     en: "Invalid credentials.",
@@ -29,6 +114,14 @@ export const translations: Record<string, { fa: string; en: string }> = {
     en: "A two-factor challenge is not pending.",
   },
   "Permission denied.": { fa: "دسترسی مجاز نیست.", en: "Permission denied." },
+  "Submitters cannot lock their own KPI data.": {
+    fa: "ثبت‌کننده نمی‌تواند دادهٔ KPI خود را قفل کند.",
+    en: "Submitters cannot lock their own KPI data.",
+  },
+  "Only approved check-ins can be locked.": {
+    fa: "فقط ثبت‌های تأییدشده قابل قفل‌شدن هستند.",
+    en: "Only approved check-ins can be locked.",
+  },
   "Unknown role.": { fa: "نقش ناشناخته است.", en: "Unknown role." },
   "User not found.": { fa: "کاربر پیدا نشد.", en: "User not found." },
   "Avatar not found.": {
@@ -42,6 +135,10 @@ export const translations: Record<string, { fa: string; en: string }> = {
   "Invalid department code.": {
     fa: "کد واحد نامعتبر است.",
     en: "Invalid department code.",
+  },
+  "The selected manager is not a member of this company.": {
+    fa: "مدیر انتخاب‌شده عضو این شرکت نیست.",
+    en: "The selected manager is not a member of this company.",
   },
   "Access level not found.": {
     fa: "سطح دسترسی پیدا نشد.",
@@ -220,6 +317,19 @@ export const translations: Record<string, { fa: string; en: string }> = {
     en: "Avatar updated.",
   },
   "Avatar removed.": { fa: "تصویر پروفایل حذف شد.", en: "Avatar removed." },
+  "Evidence file is required and must be at most 1 MB.": {
+    fa: "\u0627\u0631\u0633\u0627\u0644 \u0641\u0627\u06cc\u0644 \u0645\u062f\u0631\u06a9 \u0628\u0627 \u062d\u062c\u0645 \u062d\u062f\u0627\u06a9\u062b\u0631 \u06f1 \u0645\u06af\u0627\u0628\u0627\u06cc\u062a \u0627\u0644\u0632\u0627\u0645\u06cc \u0627\u0633\u062a.",
+    en: "Evidence file is required and must be at most 1 MB.",
+  },
+  "Unsupported evidence file.": {
+    fa: "\u0641\u0631\u0645\u062a \u0641\u0627\u06cc\u0644 \u0645\u062f\u0631\u06a9 \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0646\u0645\u06cc\u200c\u0634\u0648\u062f.",
+    en: "Unsupported evidence file.",
+  },
+  "Action approver must be an active different user in the selected department.":
+    {
+      fa: "\u062a\u0623\u06cc\u06cc\u062f\u06a9\u0646\u0646\u062f\u0647 \u0628\u0627\u06cc\u062f \u06a9\u0627\u0631\u0628\u0631 \u0641\u0639\u0627\u0644 \u0648 \u0645\u062a\u0641\u0627\u0648\u062a\u06cc \u062f\u0631 \u0648\u0627\u062d\u062f \u0627\u0646\u062a\u062e\u0627\u0628\u200c\u0634\u062f\u0647 \u0628\u0627\u0634\u062f.",
+      en: "Action approver must be an active different user in the selected department.",
+    },
 };
 
 export function resolveLocale(value?: string | string[] | null): AppLocale {

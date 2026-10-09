@@ -160,6 +160,13 @@ NEXTJS
 }
  
 
-# add shadcn 
+# [x] add shadcn (components.json and src/components/ui/button.tsx are configured)
 # add agents file skiils file 
-# Error handling 
+# Error handling
+
+## Tailwind CSS migration (gradual)
+- [x] Use the existing Tailwind v4 and shadcn setup as the default for new UI.
+- [x] Convert the shared shell styles to Tailwind utilities.
+- [x] Migrate the shared collection table to Tailwind and the shadcn Table primitive.
+- [ ] Migrate auth, dashboard, organization, performance, and system views route by route.
+- [ ] Remove Dashlite and legacy theme.css imports after all dependent views are migrated.

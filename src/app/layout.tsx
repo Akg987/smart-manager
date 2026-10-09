@@ -24,7 +24,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fa" dir="rtl" className="js h-full" suppressHydrationWarning>
-      <body className="has-rtl nk-body npc-general min-h-full">
+      <body className="has-rtl nk-body npc-general min-h-full font-sans">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

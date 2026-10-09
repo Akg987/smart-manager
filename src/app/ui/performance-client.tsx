@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { parseApiBody } from "@/lib/api";
+import { apiFetch, parseApiBody } from "@/lib/api";
 
 function faNum(value: unknown) {
   return String(value ?? 0).replace(
@@ -16,7 +16,7 @@ async function send(
   method: "POST" | "PATCH",
   body: Record<string, unknown>,
 ) {
-  const response = await fetch(endpoint, {
+  const response = await apiFetch(endpoint, {
     method,
     credentials: "same-origin",
     headers: {
@@ -37,6 +37,9 @@ export function CheckinSubmit({
   periodLabel,
   department,
   targetLabel,
+  inputMode,
+  inputOptions = [],
+  formulaType,
   revise,
 }: {
   kpiId: string;
@@ -44,6 +47,9 @@ export function CheckinSubmit({
   periodLabel: string;
   department: string;
   targetLabel: string;
+  inputMode: string;
+  inputOptions?: string[];
+  formulaType?: string;
   revise?: boolean;
 }) {
   const router = useRouter();
@@ -55,13 +61,46 @@ export function CheckinSubmit({
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     const data = new FormData(form);
+    const numeric = (key: string) => Number(data.get(key));
+    const dataJson: Record<string, unknown> = {};
+    let actualValue: unknown = null;
+    if (inputMode === "ratio" || inputMode === "percentage") {
+      dataJson.numerator = numeric("numerator");
+      dataJson.denominator = numeric("denominator");
+    } else if (inputMode === "checklist") {
+      dataJson.completed = numeric("completed");
+      dataJson.total = numeric("total");
+    } else if (inputMode === "formula" || inputMode === "components") {
+      dataJson.values = String(data.get("values") ?? "")
+        .split(/[,،]/)
+        .map((value) =>
+          Number(
+            value
+              .trim()
+              .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+              .replace(/[٠-٩]/g, (digit) =>
+                String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)),
+              ),
+          ),
+        );
+      if (formulaType) dataJson.formulaType = formulaType;
+    } else if (inputMode === "multi-select") {
+      actualValue = data.getAll("actualValue").map(String);
+    } else if (
+      ["text", "textarea", "descriptive", "select"].includes(inputMode)
+    ) {
+      actualValue = String(data.get("actualValue") ?? "");
+    } else {
+      actualValue = numeric("actualValue");
+    }
     setBusy(true);
     setMessage("");
     try {
       await send("/api/checkins", "POST", {
         kpiId: Number(kpiId),
         period,
-        actualValue: Number(data.get("actualValue")),
+        actualValue,
+        dataJson,
         note: String(data.get("note") ?? ""),
         blockers: String(data.get("blockers") ?? ""),
         status: revise ? "revised" : "submitted",
@@ -129,16 +168,112 @@ export function CheckinSubmit({
                       className="form-label"
                       htmlFor={`actual-${kpiId}-${period}`}
                     >
-                      مقدار واقعی
+                      {inputMode === "ratio"
+                        ? "صورت و مخرج نسبت"
+                        : inputMode === "percentage"
+                          ? "صورت و مخرج درصد"
+                          : inputMode === "checklist"
+                            ? "تعداد انجام‌شده و کل موارد"
+                            : inputMode === "formula" ||
+                                inputMode === "components"
+                              ? "مقادیر اجزا (با ویرگول جدا کنید)"
+                              : "مقدار واقعی"}
                     </label>
-                    <input
-                      id={`actual-${kpiId}-${period}`}
-                      className="form-control"
-                      name="actualValue"
-                      type="number"
-                      step="any"
-                      required
-                    />
+                    {inputMode === "ratio" || inputMode === "percentage" ? (
+                      <div className="d-flex gap-2">
+                        <input
+                          id={`actual-${kpiId}-${period}`}
+                          className="form-control"
+                          name="numerator"
+                          type="number"
+                          step="any"
+                          required
+                          placeholder="صورت"
+                        />
+                        <input
+                          className="form-control"
+                          name="denominator"
+                          type="number"
+                          step="any"
+                          required
+                          placeholder="مخرج"
+                        />
+                      </div>
+                    ) : inputMode === "checklist" ? (
+                      <div className="d-flex gap-2">
+                        <input
+                          id={`actual-${kpiId}-${period}`}
+                          className="form-control"
+                          name="completed"
+                          type="number"
+                          min="0"
+                          step="1"
+                          required
+                          placeholder="انجام‌شده"
+                        />
+                        <input
+                          className="form-control"
+                          name="total"
+                          type="number"
+                          min="1"
+                          step="1"
+                          required
+                          placeholder="کل موارد"
+                        />
+                      </div>
+                    ) : inputMode === "formula" ||
+                      inputMode === "components" ? (
+                      <input
+                        id={`actual-${kpiId}-${period}`}
+                        className="form-control"
+                        name="values"
+                        inputMode="decimal"
+                        required
+                        placeholder="مثلاً 10, 20, 30"
+                      />
+                    ) : inputMode === "textarea" ||
+                      inputMode === "descriptive" ? (
+                      <textarea
+                        id={`actual-${kpiId}-${period}`}
+                        className="form-control"
+                        name="actualValue"
+                        rows={4}
+                        required
+                      />
+                    ) : inputMode === "select" ||
+                      inputMode === "multi-select" ? (
+                      <select
+                        id={`actual-${kpiId}-${period}`}
+                        className="form-control"
+                        name="actualValue"
+                        multiple={inputMode === "multi-select"}
+                        required
+                      >
+                        {inputOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : inputMode === "text" ? (
+                      <input
+                        id={`actual-${kpiId}-${period}`}
+                        className="form-control"
+                        name="actualValue"
+                        type="text"
+                        required
+                      />
+                    ) : (
+                      <input
+                        id={`actual-${kpiId}-${period}`}
+                        className="form-control"
+                        name="actualValue"
+                        type="number"
+                        min={inputMode === "count" ? 0 : undefined}
+                        step={inputMode === "count" ? "1" : "any"}
+                        required
+                      />
+                    )}
                   </div>
                   <div className="form-group">
                     <label
@@ -271,52 +406,147 @@ export function AlertDecisions({
   );
 }
 
-const moves: Record<
-  string,
-  { status: "open" | "in_progress" | "blocked" | "done"; label: string }[]
-> = {
-  open: [
-    { status: "in_progress", label: "شروع" },
-    { status: "blocked", label: "مسدود" },
-  ],
-  in_progress: [
-    { status: "done", label: "انجام شد" },
-    { status: "blocked", label: "مسدود" },
-  ],
-  blocked: [{ status: "in_progress", label: "ادامه" }],
-  done: [],
-};
-
-export function ActionMoves({ id, status }: { id: string; status: string }) {
+export function ActionMoves({
+  id,
+  status,
+  progress,
+  canUpdate,
+  canApprove,
+}: {
+  id: string;
+  status: string;
+  progress: number;
+  canUpdate: boolean;
+  canApprove: boolean;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState("");
-  const options = moves[status] ?? [];
-  if (!options.length && !message) return null;
+  const [busy, setBusy] = useState(false);
+  const update = async (path: string, body: Record<string, unknown>) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await send(`/api/actions/${id}/${path}`, "PATCH", body);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "درخواست انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const reason = () => window.prompt("دلیل تغییر را وارد کنید:")?.trim() ?? "";
+  const changeStatus = (next: string) => {
+    const note = reason();
+    if (note) void update("status", { status: next, reason: note });
+  };
+  const uploadEvidence = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const form = new FormData();
+      form.append("evidence", file);
+      const response = await fetch(`/api/actions/${id}/evidence`, {
+        method: "POST",
+        credentials: "same-origin",
+        body: form,
+      });
+      const result = await response.json().catch(() => ({}));
+      const parsed = parseApiBody(result);
+      if (!response.ok)
+        throw new Error(parsed.message ?? "بارگذاری مدرک انجام نشد.");
+      router.refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "بارگذاری مدرک انجام نشد.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="sm-action-buttons">
-      {options.map((option) => (
+      {canApprove && status === "proposed" && (
         <button
-          key={option.status}
           type="button"
-          onClick={async () => {
-            setMessage("");
-            try {
-              await send(`/api/actions/${id}/status`, "PATCH", {
-                status: option.status,
-              });
-              router.refresh();
-            } catch (error) {
-              setMessage(
-                error instanceof Error
-                  ? error.message
-                  : "تغییر وضعیت انجام نشد.",
-              );
-            }
-          }}
+          disabled={busy}
+          onClick={() => changeStatus("approved")}
         >
-          {option.label}
+          تأیید اقدام
         </button>
-      ))}
+      )}
+      {canUpdate && ["approved", "in_progress", "blocked"].includes(status) && (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => changeStatus("in_progress")}
+          >
+            شروع / ادامه
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => changeStatus("blocked")}
+          >
+            مسدود
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const raw = window.prompt("درصد پیشرفت (۰ تا ۱۰۰):");
+              if (raw === null) return;
+              const value = Number(raw);
+              const note = reason();
+              if (Number.isInteger(value) && value >= 0 && value <= 100 && note)
+                void update("progress", { progress: value, reason: note });
+            }}
+          >
+            ثبت پیشرفت ({progress}٪)
+          </button>
+          <label className="btn btn-sm btn-outline-primary">
+            افزودن مدرک
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              hidden
+              disabled={busy}
+              onChange={(event) => {
+                void uploadEvidence(event.currentTarget.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {progress === 100 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => changeStatus("pending_completion_approval")}
+            >
+              ارسال برای تأیید پایان
+            </button>
+          )}
+        </>
+      )}
+      {canApprove && status === "pending_completion_approval" && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => changeStatus("closed")}
+        >
+          تأیید پایان و بستن
+        </button>
+      )}
+      {canApprove && status === "pending_completion_approval" && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => changeStatus("in_progress")}
+        >
+          بازگشت برای اصلاح
+        </button>
+      )}
       {message && (
         <p role="alert" className="text-danger small mb-0 w-100">
           {message}
@@ -325,18 +555,17 @@ export function ActionMoves({ id, status }: { id: string; status: string }) {
     </div>
   );
 }
-
 type KpiOption = { slug: string; name: string };
 type KpiPerson = {
   id: string;
   firstName: string;
   lastName: string;
   mobile: string;
-  departmentId: string | null;
 };
 type KpiFormCatalog = {
   actorId: string;
-  departments: { id: string; name: string }[];
+  company: { id: string; name: string };
+  businessUnits: { id: string; name: string }[];
   people: KpiPerson[];
   inputModes: KpiOption[];
   directions: KpiOption[];
@@ -410,7 +639,9 @@ export function KpiCreateButton() {
     try {
       await send("/api/kpis", "POST", {
         name: String(data.get("name") ?? "").trim(),
-        departmentId: Number(data.get("departmentId")),
+        businessUnitId: String(data.get("businessUnitId") ?? "")
+          ? Number(data.get("businessUnitId"))
+          : undefined,
         unit: String(data.get("unit") ?? "").trim(),
         inputMode: String(data.get("inputMode") ?? ""),
         direction: String(data.get("direction") ?? ""),
@@ -516,25 +747,19 @@ export function KpiCreateButton() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="kpi-department">
-                      <span className="req" aria-hidden="true">
-                        *
-                      </span>
-                      واحد سازمانی
+                    <label className="form-label" htmlFor="kpi-business-unit">
+                      واحد سازمانی / Business Unit
                     </label>
                     <select
-                      id="kpi-department"
+                      id="kpi-business-unit"
                       className="form-select"
-                      name="departmentId"
-                      required
+                      name="businessUnitId"
                       defaultValue=""
                     >
-                      <option value="" disabled>
-                        انتخاب واحد
-                      </option>
-                      {catalog.departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
+                      <option value="">کل شرکت</option>
+                      {catalog.businessUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name}
                         </option>
                       ))}
                     </select>
@@ -695,10 +920,10 @@ export function KpiCreateButton() {
                   پس از ساخت، می‌توانید فیلدهای فرم، فرمول امن، مهلت و قواعد
                   کیفیت را در نسخه‌های بعدی تغییر دهید.
                 </p>
-                {catalog.departments.length === 0 && (
+                {catalog.businessUnits.length === 0 && (
                   <p role="alert" className="text-danger mt-3 mb-0">
-                    هنوز واحدی تعریف نشده است. ابتدا از بخش واحدهای سازمانی یک
-                    واحد بسازید.
+                    این KPI در شرکت {catalog.company.name} ثبت می‌شود؛ می‌توانید
+                    آن را در سطح شرکت نگه دارید.
                   </p>
                 )}
                 {message && (
@@ -710,7 +935,7 @@ export function KpiCreateButton() {
                   <button
                     className="btn btn-primary"
                     type="submit"
-                    disabled={busy || catalog.departments.length === 0}
+                    disabled={busy}
                   >
                     <em className="icon ni ni-arrow-left" />
                     <span>{busy ? "در حال ساخت…" : "ساخت KPI"}</span>
@@ -742,6 +967,7 @@ export type StudioRow = {
   health: string;
   owner: string;
   version: number;
+  status?: string;
   active: boolean;
 };
 
@@ -821,7 +1047,9 @@ export function KpiStudioTable({
                   </span>
                 </span>
                 <span>{row.owner}</span>
-                <span>{faNum(row.version)}</span>
+                <span>
+                  {faNum(row.version)} · {row.status ?? "published"}
+                </span>
               </article>
             );
           })}

@@ -14,7 +14,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "api:dev": "npm --prefix apps/api run start:watch",
-    "api:test": "npm --prefix apps/api test"
+    "api:test": "npm --prefix apps/api test",
+    "phase2:backfill": "tsx scripts/phase2-backfill.ts",
+    "phase2:db-check": "node --experimental-strip-types scripts/phase2-db-acceptance.mjs",
+    "phase3:db-check": "npm --prefix apps/api test && node scripts/phase3-db-acceptance.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
