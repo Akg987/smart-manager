@@ -1,0 +1,22 @@
+---
+description: Smart Manager NestJS MVCRS and Next.js conventions
+alwaysApply: true
+---
+
+# Smart Manager
+
+- API lives in `apps/api` and runs on Fastify (`@nestjs/platform-fastify`), not Express.
+- Keep Nest bootstrap, database setup, and shared HTTP infrastructure in `apps/api/src`; place feature modules in `apps/api/src/module`, following its module/controller/service/DTO/domain/persistence conventions. Register them from `apps/api/src/app.module.ts` and resolve shared API infrastructure through explicit imports. Do not create a repository-root `/modules` directory.
+- Keep module layout as MVCRS: models/DTOs, controllers, services, and repositories. Database access belongs in repositories, not controllers.
+- JSON responses go through `TransformInterceptor`. Binary routes must use `@SkipResponseWrap()`.
+- User-facing API messages are translated in `apps/api/src/common/i18n`. Add both `fa` and `en` when introducing a new exception string.
+- The web app is Next.js in the repo root. Use `src/lib/api.ts` / `serverApi` so envelope `{ success, data, message }` responses unwrap correctly.
+- UI primitives from shadcn live in `src/components/ui`. Prefer them for new interactive controls.
+- Do not reintroduce `@nestjs/platform-express` or `express` request types.
+
+## Web styling conventions
+
+- Use Tailwind CSS utilities for new and migrated UI styling. Avoid adding standalone CSS files or new global selectors unless Tailwind cannot express the requirement cleanly.
+- Use shadcn components from `src/components/ui` for interactive controls and extend them there when a reusable primitive is needed. Use `cn()` from `src/lib/utils` to merge classes.
+- Keep the interface RTL and Persian-first. Migrate legacy Dashlite CSS and markup incrementally without breaking existing routes.
+- Read the repository `tasks.md` before implementation and treat relevant listed work as project requirements; do not silently skip applicable items. Incorporate additional boilerplates supplied by the project owner into the relevant project conventions when provided.
