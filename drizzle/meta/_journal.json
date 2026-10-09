@@ -22,6 +22,55 @@
       "when": 1791342018811,
       "tag": "0002_wonderful_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791417600000,
+      "tag": "0003_holding_memberships_jwt",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791417600001,
+      "tag": "0004_action_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791504000000,
+      "tag": "0005_kpi_governance_red_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791586800000,
+      "tag": "0006_phase3_kpi_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791586800001,
+      "tag": "0007_phase3_redflag_role_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791586800002,
+      "tag": "0008_phase3_decision_overdue_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791673200000,
+      "tag": "0009_phase4_dashboard_formula_reviews",
+      "breakpoints": true
     }
   ]
 }
