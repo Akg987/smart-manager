@@ -51,6 +51,12 @@ const beforeOrg = [
     icon: "ni-growth",
     permission: "kpi.view",
   },
+  {
+    label: "واردسازی KPI",
+    href: "/kpis/import",
+    icon: "ni-upload",
+    permission: "kpi.submit",
+  },
 ];
 
 const orgLinks = [
@@ -70,6 +76,12 @@ const profileLinks = [
 ];
 
 const afterOrg = [
+  {
+    label: "دستیار هوشمند",
+    href: "/ai",
+    icon: "ni-spark",
+    permission: "ai.chat",
+  },
   {
     label: "Dashboard Builder",
     href: "/dashboards",
@@ -236,6 +248,7 @@ function NavLink({
 }
 
 function requiredPagePermission(path: string): string | null {
+  if (path === "/ai" || path === "/ai/chat") return "ai.chat";
   if (path === "/dashboards" || /^\/dashboards\/\d+$/.test(path))
     return "dashboard.view";
   if (path === "/dashboards/create") return "dashboard.create";
@@ -272,6 +285,7 @@ function requiredPagePermission(path: string): string | null {
   )
     return "integration.manage";
   if (path === "/kpis/create") return "kpi.create";
+  if (path === "/kpis/import") return "kpi.submit";
   if (/^\/kpis\/[^/]+\/edit$/.test(path)) return "kpi.update";
   if (path === "/kpis" || /^\/kpis\/[^/]+(?:\/history)?$/.test(path))
     return "kpi.view";

@@ -35,6 +35,7 @@ import {
   RedFlagPage,
 } from "./kpi-governance";
 import { Phase4Page } from "./phase4-client";
+import { AiChatPage } from "./ai-chat";
 
 type RecordValue = Record<string, unknown>;
 const columns: Partial<
@@ -126,6 +127,7 @@ function PageHeading({
   page: RoutePage;
   action?: React.ReactNode;
 }) {
+  if (page.path === "/ai" || page.path === "/ai/chat") return <AiChatPage />;
   return (
     <div className="nk-block-head nk-block-head-sm">
       <div className="nk-block-between flex-wrap gap-3">

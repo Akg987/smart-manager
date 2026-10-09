@@ -5,7 +5,7 @@ export default function AuthLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <BodyClass className="has-rtl nk-body npc-general pg-auth min-h-full" />
+      <BodyClass className="min-h-full bg-brand-canvas font-sans text-brand-ink" />
       <main className="min-h-screen">{children}</main>
     </>
   );

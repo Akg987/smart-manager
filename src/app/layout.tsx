@@ -23,8 +23,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fa" dir="rtl" className="js h-full" suppressHydrationWarning>
-      <body className="has-rtl nk-body npc-general min-h-full font-sans">
+    <html lang="fa" dir="rtl" className="min-h-full" suppressHydrationWarning>
+      <head>
+        <link rel="stylesheet" href="/assets/css/dashlite.rtl.css" />
+        <link rel="stylesheet" href="/assets/css/theme.css?v=smart-25" />
+      </head>
+      <body className="min-h-full bg-brand-canvas font-sans text-brand-ink antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

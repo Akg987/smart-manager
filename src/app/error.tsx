@@ -16,10 +16,10 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-lighter px-6 text-center">
-      <span className="overline-title">خطای اجرایی</span>
-      <h1 className="title title-lg mt-2">پردازش این صفحه با مشکل روبه‌رو شد</h1>
-      <p className="text-soft mt-2" role="alert">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-brand-canvas px-6 text-center text-brand-ink">
+      <span className="text-xs font-semibold tracking-wide text-brand-muted">خطای اجرایی</span>
+      <h1 className="mt-2 text-2xl font-bold">پردازش این صفحه با مشکل روبه‌رو شد</h1>
+      <p className="mt-2 max-w-xl text-sm text-brand-muted" role="alert">
         {errorMessage(error, "یک خطای پیش‌بینی‌نشده رخ داد.")}
       </p>
       <Button className="mt-4" type="button" onClick={reset}>

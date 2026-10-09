@@ -48,6 +48,20 @@ export type RoutePage = {
 };
 
 const catalog: Record<string, RoutePage> = {
+  "/ai": {
+    path: "/ai",
+    title: "دستیار هوشمند",
+    eyebrow: "تحلیل مدیریتی",
+    description: "گفت‌وگو با داده‌های مجاز و دریافت پیشنهادهای قابل بازبینی.",
+    kind: "table",
+  },
+  "/ai/chat": {
+    path: "/ai/chat",
+    title: "گفت‌وگوی هوشمند",
+    eyebrow: "تحلیل مدیریتی",
+    description: "پرسش دربارهٔ KPIها و گردش‌های مدیریتی در محدودهٔ مجاز.",
+    kind: "table",
+  },
   "/": {
     path: "/",
     title: "نمای کلی سازمان",

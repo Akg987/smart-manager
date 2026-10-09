@@ -1,7 +1,4 @@
-@import url("/assets/css/dashlite.rtl.css");
-@import url("/assets/css/theme.css?v=smart-25");
-@import "tailwindcss/theme.css";
-@import "tailwindcss/utilities.css";
+@import "tailwindcss";
 
 @theme inline {
   --font-sans: "Doran", Tahoma, "Segoe UI", Arial, sans-serif;
@@ -12,9 +9,23 @@
   --color-brand-muted: #6f5c4e;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+:root {
+  --background: #f8f5f2;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #a17f63;
+  --primary-foreground: #ffffff;
+  --secondary: #f1e8e1;
+  --secondary-foreground: #211b17;
+  --muted: #f1e8e1;
+  --muted-foreground: #6f5c4e;
+  --accent: #f1e8e1;
+  --accent-foreground: #211b17;
+  --destructive: #c84d58;
+  --border: #e9ded5;
+  --input: #e9ded5;
+  --ring: #a17f63;
 }

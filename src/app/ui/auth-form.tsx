@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { useState, type FormEvent } from "react";
 import { apiFetch, parseApiBody } from "@/lib/api";
 
@@ -158,22 +159,22 @@ export function DemoForm({
   };
 
   return (
-    <form className="is-alter" autoComplete="on" onSubmit={submit}>
+    <form className="space-y-4" autoComplete="on" onSubmit={submit}>
       {fields.map((field) => (
         <div
-          className={`form-group block ${field.full ? "col-span-2" : ""}`}
+          className={`block space-y-1.5 ${field.full ? "col-span-2" : ""}`}
           key={field.name}
         >
           {field.type !== "checkbox" && (
-            <label className="form-label" htmlFor={field.name}>
+            <label className="text-sm font-medium text-brand-ink" htmlFor={field.name}>
               {field.label}
-              {field.required && <b className="text-danger me-1">*</b>}
+              {field.required && <b className="me-1 text-rose-600">*</b>}
             </label>
           )}
           {field.type === "textarea" ? (
             <textarea
               id={field.name}
-              className="form-control form-control-lg"
+              className="min-h-24 w-full rounded-md border border-brand-line bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-copper/30"
               name={field.name}
               rows={3}
               placeholder={field.placeholder}
@@ -184,7 +185,7 @@ export function DemoForm({
           ) : field.type === "select" || field.type === "multiselect" ? (
             <select
               id={field.name}
-              className="form-select form-control-lg"
+              className="h-10 w-full rounded-md border border-brand-line bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-copper/30"
               name={field.name}
               required={field.required}
               multiple={field.type === "multiselect"}
@@ -210,22 +211,22 @@ export function DemoForm({
               })}
             </select>
           ) : field.type === "checkbox" ? (
-            <span className="custom-control custom-control-sm custom-checkbox">
+            <label className="flex items-center gap-2 text-sm text-brand-muted">
               <input
                 type="checkbox"
                 id={field.name}
                 name={field.name}
-                className="custom-control-input"
+                className="size-4 accent-brand-copper"
                 defaultChecked={field.value === "true"}
               />
-              <label className="custom-control-label" htmlFor={field.name}>
+              <span>
                 {field.placeholder}
-              </label>
-            </span>
+              </span>
+            </label>
           ) : (
             <input
               id={field.name}
-              className={`form-control form-control-lg ${field.type === "tel" || field.name.includes("code") || field.name.includes("national") ? "text-center" : ""}`}
+              className={`h-11 w-full rounded-md border border-brand-line bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus-visible:border-brand-copper focus-visible:ring-4 focus-visible:ring-brand-copper/10 ${field.type === "tel" || field.name.includes("code") || field.name.includes("national") ? "text-center" : ""}`}
               dir={
                 field.type === "tel" ||
                 field.name.includes("code") ||
@@ -270,11 +271,11 @@ export function DemoForm({
             />
           )}
           {field.hint && (
-            <span className="form-note mt-1 block">{field.hint}</span>
+            <span className="mt-1 block text-xs text-brand-muted">{field.hint}</span>
           )}
           {errors[field.name]?.map((error) => (
             <span
-              className="form-note text-danger mt-1 block"
+              className="mt-1 block text-xs text-rose-600"
               role="alert"
               key={error}
             >
@@ -286,19 +287,19 @@ export function DemoForm({
       {message && (
         <div
           role="alert"
-          className={`alert alert-fill ${Object.keys(errors).length ? "alert-danger" : "alert-success"}`}
+          className={`rounded-md border px-3 py-2 text-sm ${Object.keys(errors).length ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}
         >
           {message}
         </div>
       )}
-      <div className="form-group">
-        <button
+      <div>
+        <Button
           type="submit"
-          className="btn btn-lg btn-primary btn-block"
+          className="h-11 w-full bg-brand-copper text-white hover:bg-brand-muted"
           disabled={disabled || busy || !endpoint}
         >
           {busy ? "در حال ارسال…" : submitLabel}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -318,49 +319,45 @@ export function AuthFrame({
   footnote?: React.ReactNode;
 }) {
   return (
-    <div className="brand-auth">
-      <section className="brand-auth__intro">
+    <div className="grid min-h-screen bg-brand-canvas lg:grid-cols-[minmax(0,1fr)_minmax(28rem,0.9fr)]">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-brand-ink p-12 text-white lg:flex">
         <img
-          className="brand-auth__mark"
+          className="mb-12 h-14 w-auto object-contain object-right"
           src="/images/logo.png"
           alt="اسمارت منیجر"
         />
-        <span className="brand-auth__eyebrow">SMART MANAGER</span>
-        <h1>هسته مدیریت هوشمند سازمان شما</h1>
-        <p>
+        <span className="text-xs font-semibold tracking-[0.25em] text-brand-gold">SMART MANAGER</span>
+        <h1 className="mt-5 max-w-lg text-4xl font-bold leading-tight">هسته مدیریت هوشمند سازمان شما</h1>
+        <p className="mt-4 max-w-lg text-base leading-8 text-white/70">
           ورود، کاربران، دسترسی‌ها و ماژول‌ها در یک فضای واحد با هویت اسمارت
           منیجر.
         </p>
-        <div className="brand-auth__path" aria-hidden="true">
+        <div className="mt-12 flex flex-wrap gap-3 text-sm text-white/70" aria-hidden="true">
           <span>ورود</span>
           <span>نقش‌ها</span>
           <span>ماژول‌ها</span>
           <span>عملیات</span>
         </div>
       </section>
-      <section className="brand-auth__panel">
-        <div className="brand-auth__card">
-          <Link href="/dashboard" className="d-block text-center">
+      <section className="flex items-center justify-center px-5 py-12 sm:px-10">
+        <div className="w-full max-w-lg rounded-2xl border border-brand-line bg-white p-6 shadow-xl shadow-brand-ink/5 sm:p-10">
+          <Link href="/dashboard" className="mb-8 block text-center">
             <img
-              className="brand-auth__wordmark"
+              className="mx-auto h-10 w-auto object-contain"
               src="/images/logo-dark.png"
               srcSet="/images/logo-dark2x.png 2x"
               alt="اسمارت منیجر"
             />
           </Link>
-          <div className="nk-block-head">
-            <div className="nk-block-head-content">
-              <h4 className="nk-block-title">{heading}</h4>
-              <div className="nk-block-des">
-                <p>{subheading}</p>
-              </div>
-            </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-brand-ink">{heading}</h2>
+            <p className="mt-2 text-sm leading-6 text-brand-muted">{subheading}</p>
           </div>
           {children}
           {footnote && (
-            <div className="form-note-s2 pt-4 text-center">{footnote}</div>
+            <div className="pt-4 text-center text-sm text-brand-muted">{footnote}</div>
           )}
-          <p className="brand-auth__footnote">
+          <p className="mt-8 border-t border-brand-line pt-5 text-center text-xs text-brand-muted">
             © ۱۴۰۵ اسمارت منیجر — تمام حقوق محفوظ است.
           </p>
           <span className="sr-only">{title}</span>
@@ -423,14 +420,16 @@ export function ModuleToggle({
   };
   return (
     <div>
-      <button
+      <Button
         type="button"
-        className={`btn btn-sm ${enabled ? "btn-dim btn-warning" : "btn-dim btn-success"}`}
+        variant={enabled ? "outline" : "default"}
+        size="sm"
+        className={enabled ? "border-amber-300 text-amber-800" : "bg-emerald-700 text-white"}
         disabled={busy}
         onClick={toggle}
       >
         {busy ? "در حال ذخیره…" : enabled ? "غیرفعال‌سازی" : "فعال‌سازی"}
-      </button>
+      </Button>
       {message && (
         <span className="form-note ms-2" role="status">
           {message}
@@ -468,14 +467,14 @@ export function AvatarRemoveButton() {
   };
   return (
     <div className="mt-3">
-      <button
+      <Button
         type="button"
-        className="btn btn-dim btn-danger"
+        variant="destructive"
         onClick={remove}
         disabled={busy}
       >
         {busy ? "در حال حذف…" : "حذف تصویر پروفایل"}
-      </button>
+      </Button>
       {message && (
         <span className="form-note ms-2" role="status">
           {message}
@@ -508,11 +507,11 @@ export function AuthResendButton() {
   };
   return (
     <>
-      <button className="btn btn-link" type="button" onClick={resend}>
+      <Button variant="ghost" className="px-0 text-brand-copper" type="button" onClick={resend}>
         ارسال دوباره کد
-      </button>
+      </Button>
       {message && (
-        <span role="status" className="block text-soft text-xs">
+          <span role="status" className="block text-xs text-brand-muted">
           {message}
         </span>
       )}
@@ -529,8 +528,8 @@ export function CancelTwoFactorButton() {
     window.location.assign("/login");
   };
   return (
-    <button className="btn btn-link text-soft" type="button" onClick={cancel}>
+    <Button variant="ghost" className="px-0 text-brand-muted" type="button" onClick={cancel}>
       انصراف و بازگشت به ورود
-    </button>
+    </Button>
   );
 }
