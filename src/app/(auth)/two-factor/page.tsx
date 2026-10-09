@@ -27,6 +27,7 @@ export default function TwoFactorPage() {
         submitLabel="تأیید و ورود"
         endpoint="/api/auth/two-factor/verify"
         redirectTo="/dashboard"
+        redirectToNext
       />
       <div className="mt-2 text-center">
         <AuthResendButton />

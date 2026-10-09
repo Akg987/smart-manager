@@ -40,6 +40,7 @@ export default function LoginPage() {
         submitLabel="ورود"
         endpoint="/api/auth/login"
         redirectTo="/dashboard"
+        redirectToNext
       />
       <div className="form-note-s2 text-center pt-2">
         <Link href="/forgot-password">رمز عبور را فراموش کرده‌اید؟</Link>

@@ -62,6 +62,66 @@ const catalog: Record<string, RoutePage> = {
     description: "به‌روزرسانی وضعیت بر اساس آخرین ثبت‌های تیم.",
     kind: "dashboard",
   },
+  "/dashboards": {
+    path: "/dashboards",
+    title: "داشبوردهای پویا",
+    eyebrow: "سازنده داشبورد",
+    description:
+      "داشبوردهای نقش‌محور را با ویجت‌های مجاز بسازید، ویرایش کنید و منتشر کنید.",
+    kind: "table",
+  },
+  "/dashboards/create": {
+    path: "/dashboards/create",
+    title: "ساخت داشبورد",
+    eyebrow: "سازنده داشبورد",
+    description: "چیدمان و ویجت‌های داشبورد را بر اساس دسترسی خود تنظیم کنید.",
+    kind: "form",
+  },
+  "/formulas": {
+    path: "/formulas",
+    title: "Formula Studio",
+    eyebrow: "KPI مشتق‌شده",
+    description:
+      "فرمول را اعتبارسنجی و KPI مشتق‌شدهٔ نسخه‌دار ایجاد و محاسبه کنید.",
+    kind: "table",
+  },
+  "/formulas/create": {
+    path: "/formulas/create",
+    title: "ساخت فرمول",
+    eyebrow: "Formula Studio",
+    description: "منابع KPI مجاز را به یک فرمول امن و قابل‌ردیابی تبدیل کنید.",
+    kind: "form",
+  },
+  "/decisions": {
+    path: "/decisions",
+    title: "پیگیری تصمیم‌ها",
+    eyebrow: "گردش کار مدیریت",
+    description:
+      "تصمیم‌ها را ثبت کنید، برای اجرا پیگیری کنید و نتیجه را بازبینی کنید.",
+    kind: "table",
+  },
+  "/management-reviews": {
+    path: "/management-reviews",
+    title: "مرورهای WBR و MBR",
+    eyebrow: "گزارش مدیریتی",
+    description: "جلسه‌های هفتگی و ماهانه را با snapshot دوره‌ای مدیریت کنید.",
+    kind: "table",
+  },
+  "/management-reviews/create": {
+    path: "/management-reviews/create",
+    title: "ساخت مرور مدیریتی",
+    eyebrow: "گزارش مدیریتی",
+    description: "پیش‌نویس WBR یا MBR برای دورهٔ انتخابی ایجاد کنید.",
+    kind: "form",
+  },
+  "/management-automation": {
+    path: "/management-automation",
+    title: "یادآوری و تشدید",
+    eyebrow: "اتوماسیون مدیریتی",
+    description:
+      "قواعد تشدید و یادآوری مهلت‌ها را در محدودهٔ مجاز پیکربندی کنید.",
+    kind: "settings",
+  },
   "/admin/users": {
     path: "/admin/users",
     title: "کاربران",
@@ -81,6 +141,21 @@ const catalog: Record<string, RoutePage> = {
       "واحدها مبنای محدوده داده ماژول‌ها هستند. کاربری بدون واحد، داده واحد–محور را نمی‌بیند.",
     kind: "directory",
     directory: "departments",
+  },
+  "/admin/tenants": {
+    path: "/admin/tenants",
+    title: "ساختار شرکت",
+    eyebrow: "ساختار سازمانی",
+    description:
+      "مدیریت شرکت‌ها، شعبه‌ها و واحدهای کسب‌وکار در محدوده دسترسی شما.",
+    kind: "settings",
+  },
+  "/accept-invitation": {
+    path: "/accept-invitation",
+    title: "پذیرش دعوت شرکت",
+    eyebrow: "عضویت سازمانی",
+    description: "دعوت شرکت با تطبیق شمارهٔ موبایل حساب پذیرش می‌شود.",
+    kind: "settings",
   },
   "/admin/access-levels": {
     path: "/admin/access-levels",
@@ -222,6 +297,29 @@ const catalog: Record<string, RoutePage> = {
     kind: "board",
     board: "checkins",
   },
+  "/checkins/review": {
+    path: "/checkins/review",
+    title: "بررسی داده‌های KPI",
+    eyebrow: "گردش‌کار داده",
+    description:
+      "ثبت‌ها را بررسی کنید؛ ثبت‌کننده اجازهٔ تأیید دادهٔ خودش را ندارد.",
+    kind: "table",
+  },
+  "/red-flags": {
+    path: "/red-flags",
+    title: "پرچم‌های قرمز",
+    eyebrow: "پایش انحراف",
+    description:
+      "علت، مسئول و پیگیری موارد بحرانی را در محدودهٔ دسترسی خود مدیریت کنید.",
+    kind: "table",
+  },
+  "/observations": {
+    path: "/observations",
+    title: "مشاهدات مدیریتی",
+    eyebrow: "مرور عملکرد",
+    description: "مشاهدات دوره‌ای را ثبت و در مرور مدیریتی پیگیری کنید.",
+    kind: "table",
+  },
   "/kpi-reports/weekly": {
     path: "/kpi-reports/weekly",
     title: "گزارش هفته جاری",
@@ -278,6 +376,38 @@ export function getRoutePage(segments: string[] = []): RoutePage | null {
   const path = `/${segments.join("/")}`;
   const direct = catalog[path];
   if (direct) return direct;
+  if (/^\/dashboards\/\d+$/.test(path))
+    return {
+      path,
+      title: "داشبورد",
+      eyebrow: "سازنده داشبورد",
+      description: "نمایش، پیش‌نمایش یا ویرایش داشبورد انتخاب‌شده.",
+      kind: "table",
+    };
+  if (/^\/formulas\/\d+$/.test(path))
+    return {
+      path,
+      title: "KPI مشتق‌شده",
+      eyebrow: "Formula Studio",
+      description: "محاسبه و بررسی ریزدانهٔ نسخهٔ انتخاب‌شده.",
+      kind: "table",
+    };
+  if (/^\/management-reviews\/\d+$/.test(path))
+    return {
+      path,
+      title: "جزئیات مرور مدیریتی",
+      eyebrow: "گزارش مدیریتی",
+      description: "snapshot، انتشار و جمع‌بندی جلسه را مدیریت کنید.",
+      kind: "table",
+    };
+  if (/^\/kpis\/[^/]+\/data$/.test(path))
+    return {
+      path,
+      title: "ثبت داده KPI",
+      eyebrow: "گردش گزارش",
+      description: "مقدار و شواهد این دوره را ثبت کنید.",
+      kind: "table",
+    };
   if (/^\/kpis\/[^/]+(?:\/edit)?$/.test(path))
     return {
       path,
@@ -288,6 +418,14 @@ export function getRoutePage(segments: string[] = []): RoutePage | null {
       form: "kpi",
       collection: "kpis",
       actionLabel: "ویرایش شاخص",
+    };
+  if (/^\/kpis\/[^/]+\/history$/.test(path))
+    return {
+      path,
+      title: "تاریخچه KPI",
+      eyebrow: "نسخه و دادهٔ مصوب",
+      description: "نسخه‌های تعریف و داده‌های تأییدشدهٔ شاخص را مرور کنید.",
+      kind: "table",
     };
   if (/^\/admin\/access-levels\/[^/]+\/edit$/.test(path))
     return {

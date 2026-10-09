@@ -14,6 +14,9 @@ type CheckinCard = {
   kpiId: string;
   name: string;
   department: string;
+  inputMode: string;
+  inputOptions: string[];
+  formulaType: string;
   unit: string;
   period: string;
   target: string;
@@ -60,12 +63,18 @@ type ActionCard = {
   status: string;
   overdue: boolean;
   canUpdate: boolean;
+  canApprove: boolean;
+  progress: number;
 };
 type ActionBoard = {
-  open: ActionCard[];
+  proposed: ActionCard[];
+  approved: ActionCard[];
   in_progress: ActionCard[];
   blocked: ActionCard[];
-  done: ActionCard[];
+  pending_completion_approval: ActionCard[];
+  closed: ActionCard[];
+  legacy_done: ActionCard[];
+  canceled: ActionCard[];
 };
 
 function faNum(value: unknown) {
@@ -205,6 +214,9 @@ function CheckinCards({
                 periodLabel={periodLabel}
                 department={card.department}
                 targetLabel={target}
+                inputMode={card.inputMode}
+                inputOptions={card.inputOptions}
+                formulaType={card.formulaType}
                 revise={revise}
               />
             )}
@@ -445,8 +457,14 @@ function ActionColumn({
                     </small>
                   </div>
                 </div>
-                {card.canUpdate && (
-                  <ActionMoves id={card.id} status={card.status} />
+                {(card.canUpdate || card.canApprove) && (
+                  <ActionMoves
+                    id={card.id}
+                    status={card.status}
+                    progress={card.progress}
+                    canUpdate={card.canUpdate}
+                    canApprove={card.canApprove}
+                  />
                 )}
               </article>
             );
@@ -460,10 +478,14 @@ function ActionColumn({
 async function ActionsPage({ page }: { page: RoutePage }) {
   const result = await serverApi<ActionBoard>("actions/board");
   const board = result.data ?? {
-    open: [],
+    proposed: [],
+    approved: [],
     in_progress: [],
     blocked: [],
-    done: [],
+    pending_completion_approval: [],
+    closed: [],
+    legacy_done: [],
+    canceled: [],
   };
   return (
     <>
@@ -482,10 +504,20 @@ async function ActionsPage({ page }: { page: RoutePage }) {
         </div>
       )}
       <div className="sm-kanban">
-        <ActionColumn title="پیشنهادی" cards={board.open} />
+        <ActionColumn title="پیشنهادی" cards={board.proposed} />
+        <ActionColumn title="Approved" cards={board.approved} />
         <ActionColumn title="در حال انجام" cards={board.in_progress} />
         <ActionColumn title="مسدود" cards={board.blocked} />
-        <ActionColumn title="انجام شده" cards={board.done} />
+        <ActionColumn
+          title="Pending completion approval"
+          cards={board.pending_completion_approval}
+        />
+        <ActionColumn title="انجام شده" cards={board.closed} />
+        <ActionColumn
+          title="Historical done (unverified)"
+          cards={board.legacy_done}
+        />
+        <ActionColumn title="Canceled" cards={board.canceled} />
       </div>
     </>
   );

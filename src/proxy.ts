@@ -4,6 +4,7 @@ const protectedPaths = [
   "/",
   "/dashboard",
   "/admin",
+  "/accept-invitation",
   "/users",
   "/organization",
   "/profile",

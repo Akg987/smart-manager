@@ -77,6 +77,7 @@ export default function RegisterPage() {
         submitLabel="ثبت نام"
         endpoint="/api/auth/register"
         redirectTo="/approval-pending"
+        includeInvitationToken
       />
       <div className="form-note-s2 text-center pt-2">
         حساب کاربری دارید؟ <Link href="/login">وارد شوید</Link>

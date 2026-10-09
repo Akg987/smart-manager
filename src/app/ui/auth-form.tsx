@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { parseApiBody } from "@/lib/api";
+import { apiFetch, parseApiBody } from "@/lib/api";
 
 export type AuthField = {
   name: string;
@@ -12,7 +12,7 @@ export type AuthField = {
   hint?: string;
   required?: boolean;
   full?: boolean;
-  options?: string[];
+  options?: (string | { value: string; label: string })[];
   value?: string;
 };
 
@@ -22,15 +22,21 @@ export function DemoForm({
   endpoint,
   method = "POST",
   redirectTo,
+  redirectToNext = false,
+  includeInvitationToken = false,
   disabled = false,
+  redirectOnCreate = false,
 }: {
   fields: AuthField[];
   submitLabel: string;
   endpoint?: string;
   method?: "POST" | "PATCH";
   redirectTo?: string;
+  redirectToNext?: boolean;
+  includeInvitationToken?: boolean;
   feedback?: string;
   disabled?: boolean;
+  redirectOnCreate?: boolean;
 }) {
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -44,18 +50,52 @@ export function DemoForm({
     setErrors({});
     const data = new FormData(form);
     const hasFile = fields.some((field) => field.type === "file");
-    const payload = Object.fromEntries(
+    const payload: Record<string, unknown> = Object.fromEntries(
       fields.map((field) => [
         field.name,
         field.type === "checkbox"
           ? data.get(field.name) === "on"
-          : field.type === "multiselect"
-            ? data.getAll(field.name).map(String)
-            : String(data.get(field.name) ?? ""),
+          : field.type === "number"
+            ? data.get(field.name) === ""
+              ? null
+              : Number(data.get(field.name))
+            : field.type === "multiselect"
+              ? data.getAll(field.name).map(String)
+              : String(data.get(field.name) ?? ""),
       ]),
     );
+    if (Object.hasOwn(payload, "inputOptions")) {
+      payload.inputOptions = String(payload.inputOptions ?? "")
+        .split(/[,،]/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+    }
+    if (
+      Object.hasOwn(payload, "rangeMinimum") ||
+      Object.hasOwn(payload, "rangeMaximum")
+    ) {
+      const minimum =
+        payload.rangeMinimum === "" || payload.rangeMinimum == null
+          ? null
+          : Number(payload.rangeMinimum);
+      const maximum =
+        payload.rangeMaximum === "" || payload.rangeMaximum == null
+          ? null
+          : Number(payload.rangeMaximum);
+      delete payload.rangeMinimum;
+      delete payload.rangeMaximum;
+      if (minimum !== null && maximum !== null)
+        payload.rangeConfig = { minimum, maximum };
+    }
+    const invitationToken = includeInvitationToken
+      ? new URLSearchParams(window.location.search).get("invitation")
+      : null;
+    if (invitationToken) payload.invitationToken = invitationToken;
+    const next = new URLSearchParams(window.location.search).get("next");
+    const safeNext =
+      next?.startsWith("/") && !next.startsWith("//") ? next : null;
     try {
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method,
         credentials: "same-origin",
         headers: hasFile
@@ -82,11 +122,24 @@ export function DemoForm({
         parsed.payload?.twoFactorRequired === true ||
         (result as { twoFactorRequired?: boolean }).twoFactorRequired === true
       ) {
-        window.location.assign("/two-factor");
+        window.location.assign(
+          safeNext
+            ? `/two-factor?next=${encodeURIComponent(safeNext)}`
+            : "/two-factor",
+        );
         return;
       }
-      if (redirectTo) {
-        window.location.assign(redirectTo);
+      const createdId = (parsed.payload as { id?: string | number } | undefined)
+        ?.id;
+      if (redirectOnCreate && method === "POST" && createdId != null) {
+        window.location.assign(
+          `/kpis/${encodeURIComponent(String(createdId))}`,
+        );
+        return;
+      }
+      const destination = redirectToNext && safeNext ? safeNext : redirectTo;
+      if (destination) {
+        window.location.assign(destination);
         return;
       }
       setMessage(
@@ -144,9 +197,17 @@ export function DemoForm({
               <option value="" disabled>
                 انتخاب کنید
               </option>
-              {field.options?.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
+              {field.options?.map((option) => {
+                const value =
+                  typeof option === "string" ? option : option.value;
+                const label =
+                  typeof option === "string" ? option : option.label;
+                return (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           ) : field.type === "checkbox" ? (
             <span className="custom-control custom-control-sm custom-checkbox">
@@ -334,7 +395,7 @@ export function ModuleToggle({
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/modules/${encodeURIComponent(slug)}/activation`,
         {
           method: "PATCH",
@@ -386,7 +447,7 @@ export function AvatarRemoveButton() {
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch("/api/users/me/avatar", {
+      const response = await apiFetch("/api/users/me/avatar", {
         method: "DELETE",
         credentials: "same-origin",
         headers: { accept: "application/json" },
@@ -429,7 +490,7 @@ export function AuthResendButton() {
   const resend = async () => {
     setMessage("");
     try {
-      const response = await fetch("/api/auth/two-factor/resend", {
+      const response = await apiFetch("/api/auth/two-factor/resend", {
         method: "POST",
         credentials: "same-origin",
         headers: { "accept-language": "fa" },
@@ -461,7 +522,7 @@ export function AuthResendButton() {
 
 export function CancelTwoFactorButton() {
   const cancel = async () => {
-    await fetch("/api/auth/two-factor/cancel", {
+    await apiFetch("/api/auth/two-factor/cancel", {
       method: "POST",
       credentials: "same-origin",
     }).catch(() => undefined);
