@@ -507,7 +507,7 @@ export function TenantAdminBoard() {
           </span>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-brand-line bg-white p-2 shadow-sm">
         <div
           className="flex min-w-max gap-1"
           role="tablist"
@@ -524,8 +524,8 @@ export function TenantAdminBoard() {
               aria-selected={section === key}
               className={
                 section === key
-                  ? "bg-brand-copper text-white hover:bg-[#86654d] hover:text-white focus-visible:ring-4 focus-visible:ring-brand-copper/20"
-                  : "text-slate-600 hover:bg-brand-canvas hover:text-brand-ink focus-visible:ring-4 focus-visible:ring-brand-copper/20"
+                  ? "bg-brand-copper text-white hover:bg-brand-copper-hover hover:text-white focus-visible:ring-4 focus-visible:ring-brand-copper/20"
+                  : "text-brand-muted hover:bg-brand-canvas hover:text-brand-ink focus-visible:ring-4 focus-visible:ring-brand-copper/20"
               }
               onClick={() => setSection(key)}
             >
@@ -556,10 +556,10 @@ export function TenantAdminBoard() {
             onSubmit={assignMembership}
             className="card card-bordered grid gap-3 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
           >
-            <h2 className="text-lg font-semibold text-slate-900 sm:col-span-2 lg:col-span-4">
+            <h2 className="text-lg font-semibold text-brand-ink sm:col-span-2 lg:col-span-4">
               افزودن یا به‌روزرسانی عضویت
             </h2>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               شناسهٔ کاربر
               <Input
                 name="userId"
@@ -570,7 +570,7 @@ export function TenantAdminBoard() {
                 dir="ltr"
               />
             </label>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               شرکت
               <select
                 name="companyId"
@@ -587,7 +587,7 @@ export function TenantAdminBoard() {
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               دامنهٔ عضویت
               <select
                 value={assignmentScope}
@@ -602,7 +602,7 @@ export function TenantAdminBoard() {
               </select>
             </label>
             {assignmentScope === "branch" && (
-              <label className="grid gap-1 text-sm font-medium text-slate-700">
+              <label className="grid gap-1 text-sm font-medium text-brand-ink">
                 شعبه
                 <select
                   name="branchId"
@@ -619,7 +619,7 @@ export function TenantAdminBoard() {
               </label>
             )}
             {assignmentScope === "businessUnit" && (
-              <label className="grid gap-1 text-sm font-medium text-slate-700">
+              <label className="grid gap-1 text-sm font-medium text-brand-ink">
                 واحد کسب‌وکار
                 <select
                   name="businessUnitId"
@@ -635,7 +635,7 @@ export function TenantAdminBoard() {
                 </select>
               </label>
             )}
-            <label className="grid gap-1 text-sm font-medium text-slate-700 lg:col-span-2">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink lg:col-span-2">
               نقش‌ها
               <select
                 name="roleIds"
@@ -649,14 +649,14 @@ export function TenantAdminBoard() {
                   </option>
                 ))}
               </select>
-              <span className="text-xs font-normal text-slate-500">
+              <span className="text-xs font-normal text-brand-muted">
                 برای انتخاب چند نقش از Ctrl یا Command استفاده کنید.
               </span>
             </label>
             <div className="flex items-end">
               <Button
                 type="submit"
-                className="bg-brand-copper hover:bg-[#86654d]"
+                className="bg-brand-copper hover:bg-brand-copper-hover"
                 disabled={
                   assigning ||
                   delegableRoles.length === 0 ||
@@ -668,7 +668,7 @@ export function TenantAdminBoard() {
             </div>
           </form>
           <div className="card card-bordered p-4 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">
+            <h2 className="mb-3 text-lg font-semibold text-brand-ink">
               عضویت‌های در محدودهٔ دسترسی شما
             </h2>
             <Table>
@@ -697,7 +697,7 @@ export function TenantAdminBoard() {
                             .filter(Boolean)
                             .join(" ") || "بدون نام"}
                         </div>
-                        <div className="text-xs text-slate-500" dir="ltr">
+                        <div className="text-xs text-brand-muted" dir="ltr">
                           {row.user.mobile}
                         </div>
                       </TableCell>
@@ -733,7 +733,7 @@ export function TenantAdminBoard() {
                           ))}
                         </select>
                         {row.roles.length > 0 && (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-brand-muted">
                             فعلی:{" "}
                             {row.roles.map((role) => role.name).join("، ")}
                           </p>
@@ -765,7 +765,7 @@ export function TenantAdminBoard() {
                           </Button>
                         </div>
                         {!canEditRoles && (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-brand-muted">
                             این عضویت نقش غیرقابل‌تفویض دارد و از این صفحه قابل
                             تغییر نیست.
                           </p>
@@ -778,7 +778,7 @@ export function TenantAdminBoard() {
                   <TableRow>
                     <TableCell
                       colSpan={4}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-brand-muted"
                     >
                       عضوی در این محدوده پیدا نشد.
                     </TableCell>
@@ -786,7 +786,7 @@ export function TenantAdminBoard() {
                 )}
               </TableBody>
             </Table>
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-brand-muted">
               فهرست نقش‌ها فقط نقش‌های غیرسیستمی را نشان می‌دهد که مجوزها و
               دامنه‌شان زیرمجموعهٔ دسترسی فعلی شماست.
             </p>
@@ -798,10 +798,10 @@ export function TenantAdminBoard() {
             onSubmit={createInvitation}
             className="card card-bordered grid gap-3 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
           >
-            <h2 className="text-lg font-semibold text-slate-900 sm:col-span-2 lg:col-span-4">
+            <h2 className="text-lg font-semibold text-brand-ink sm:col-span-2 lg:col-span-4">
               دعوت عضو جدید
             </h2>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               شمارهٔ موبایل
               <Input
                 name="mobile"
@@ -813,7 +813,7 @@ export function TenantAdminBoard() {
                 className="font-normal"
               />
             </label>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               شرکت
               <select
                 name="companyId"
@@ -830,7 +830,7 @@ export function TenantAdminBoard() {
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               نقش
               <select
                 name="roleId"
@@ -848,7 +848,7 @@ export function TenantAdminBoard() {
             <div className="flex items-end">
               <Button
                 type="submit"
-                className="bg-brand-copper hover:bg-[#86654d]"
+                className="bg-brand-copper hover:bg-brand-copper-hover"
                 disabled={
                   busy || delegableRoles.length === 0 || companies.length === 0
                 }
@@ -908,7 +908,7 @@ export function TenantAdminBoard() {
             </div>
           )}
           <div className="card card-bordered p-4 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">
+            <h2 className="mb-3 text-lg font-semibold text-brand-ink">
               دعوت‌های معتبر و پذیرفته‌نشده
             </h2>
             <Table>
@@ -949,7 +949,7 @@ export function TenantAdminBoard() {
                   <TableRow>
                     <TableCell
                       colSpan={4}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-brand-muted"
                     >
                       دعوت معتبری وجود ندارد.
                     </TableCell>
@@ -965,7 +965,7 @@ export function TenantAdminBoard() {
             onSubmit={submit}
             className="card card-bordered grid gap-3 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"
           >
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               نام
               <Input
                 name="name"
@@ -975,7 +975,7 @@ export function TenantAdminBoard() {
                 className="font-normal"
               />
             </label>
-            <label className="grid gap-1 text-sm font-medium text-slate-700">
+            <label className="grid gap-1 text-sm font-medium text-brand-ink">
               کد
               <Input
                 name="code"
@@ -989,7 +989,7 @@ export function TenantAdminBoard() {
             </label>
             {section === "business-units" && (
               <>
-                <label className="grid gap-1 text-sm font-medium text-slate-700">
+                <label className="grid gap-1 text-sm font-medium text-brand-ink">
                   شعبه (اختیاری)
                   <select
                     name="branchId"
@@ -1004,7 +1004,7 @@ export function TenantAdminBoard() {
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-1 text-sm font-medium text-slate-700">
+                <label className="grid gap-1 text-sm font-medium text-brand-ink">
                   دامنه
                   <Input
                     name="domain"
@@ -1018,7 +1018,7 @@ export function TenantAdminBoard() {
             <div className="flex items-end">
               <Button
                 type="submit"
-                className="bg-brand-copper hover:bg-[#86654d]"
+                className="bg-brand-copper hover:bg-brand-copper-hover"
                 disabled={busy}
               >
                 {busy ? "در حال ثبت…" : "افزودن"}
@@ -1026,7 +1026,7 @@ export function TenantAdminBoard() {
             </div>
           </form>
           <div className="card card-bordered p-4 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">
+            <h2 className="mb-3 text-lg font-semibold text-brand-ink">
               {current.title}
             </h2>
             <Table>
@@ -1073,7 +1073,7 @@ export function TenantAdminBoard() {
                         current.columns.length +
                         (section === "companies" ? 0 : 1)
                       }
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-brand-muted"
                     >
                       موردی برای نمایش نیست.
                     </TableCell>
@@ -1133,7 +1133,7 @@ export function AcceptInvitationBoard() {
       </div>
       <div className="card card-bordered">
         <div className="card-inner space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-brand-muted">
             پس از تأیید، نقش دعوت‌شده در شرکت مربوط به عضویت شما اضافه می‌شود.
           </p>
           {error && (
@@ -1155,7 +1155,7 @@ export function AcceptInvitationBoard() {
           <Button
             type="button"
             disabled={!token || busy || Boolean(message)}
-            className="bg-brand-copper hover:bg-[#86654d]"
+            className="bg-brand-copper hover:bg-brand-copper-hover"
             onClick={() => void accept()}
           >
             {busy ? "در حال بررسی…" : "پذیرش دعوت"}

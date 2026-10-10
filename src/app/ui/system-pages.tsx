@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Can } from "@/contexts/auth-context";
 import { serverApi } from "@/lib/api-server";
 import type { RoutePage } from "./route-catalog";
 import {
@@ -65,11 +66,11 @@ type Weekly = {
 type KpiDash = { completion: number; attention: number; period: string } | null;
 
 const settingsTabs = [
-  { id: "general", href: "/settings/general", label: "عمومی" },
-  { id: "access", href: "/settings/roles", label: "سطح دسترسی" },
-  { id: "kpi", href: "/settings/kpi-options", label: "استودیو KPI" },
-  { id: "actions", href: "/settings/action-priorities", label: "اقدام" },
-  { id: "about", href: "/settings/about", label: "درباره ما" },
+  { id: "general", href: "/settings/general", label: "عمومی" , permission: "integration.manage"},
+  { id: "access", href: "/settings/roles", label: "سطح دسترسی" , permission: "roles.view"},
+  { id: "kpi", href: "/settings/kpi-options", label: "استودیوی شاخص‌ها" , permission: "integration.manage"},
+  { id: "actions", href: "/settings/action-priorities", label: "اقدام" , permission: "integration.manage"},
+  { id: "about", href: "/settings/about", label: "درباره ما" , permission: "integration.view"},
 ];
 
 function settingsTab(path: string) {
@@ -100,13 +101,11 @@ function SettingsFrame({
       <section className="card card-bordered sm-settings-card">
         <nav className="sm-settings-tabs" aria-label="بخش‌های تنظیمات">
           {settingsTabs.map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={tab.id === current ? "is-active" : ""}
-            >
-              {tab.label}
-            </Link>
+            <Can key={tab.id} permission={tab.permission}>
+              <Link href={tab.href} className={tab.id === current ? "is-active" : ""}>
+                {tab.label}
+              </Link>
+            </Can>
           ))}
         </nav>
         <div className="sm-settings-body">{children}</div>
@@ -130,7 +129,7 @@ export async function WeeklyBoard() {
     ["بخش", "عنوان", "جزئیات"],
     ["تکمیل داده", `${completion}%`, "هدف پایلوت ۸۵٪"],
     ["هشدار حل‌شده", String(board?.resolvedAlerts ?? 0), "از ابتدای هفته"],
-    ["اقدام مؤثر", String(board?.completedActions ?? 0), "پس از سنجش KPI"],
+    ["اقدام مؤثر", String(board?.completedActions ?? 0), "پس از سنجش شاخص عملکرد"],
     ...priorities.map((item) => ["اولویت", item.title, ""]),
     ...actions.map((item) => ["اقدام هفته بعد", item.title, item.owner]),
   ];
@@ -210,7 +209,7 @@ export async function WeeklyBoard() {
             <div className="sm-stat-value">
               {faNum(board?.completedActions ?? 0)}
             </div>
-            <p className="text-soft mb-0">پس از سنجش KPI</p>
+            <p className="text-soft mb-0">پس از سنجش شاخص عملکرد</p>
           </div>
         </article>
       </div>
@@ -286,10 +285,12 @@ async function AccessTab() {
             مدیر سیستم خارج از این فهرست است.
           </p>
         </div>
-        <Link href="/admin/access-levels/create" className="btn btn-primary">
+        <Can permission="roles.manage">
+          <Link href="/admin/access-levels/create" className="btn btn-primary">
           <span>ساخت سطح</span>
           <em className="icon ni ni-plus" />
-        </Link>
+          </Link>
+        </Can>
       </div>
       {levels.length === 0 ? (
         <div className="sm-access-empty">
@@ -298,9 +299,7 @@ async function AccessTab() {
       ) : (
         <div className="sm-access-list">
           {levels.map((level) => (
-            <Link key={level.id} href={`/admin/access-levels/${level.id}/edit`}>
-              {level.name}
-            </Link>
+            <span key={level.id}>{level.name}</span>
           ))}
         </div>
       )}
@@ -338,7 +337,7 @@ async function AboutTab() {
           <span className="sm-page-head__eyebrow">هسته سامانه</span>
           <h2 className="sm-about-hero__title">اسمارت منیجر</h2>
           <p className="sm-about-hero__lead">
-            هسته سامانه مدیریت KPI، ثبت داده پرسنل، هشدار، اقدام اصلاحی و معماری
+            هسته سامانه مدیریت شاخص‌های کلیدی عملکرد، ثبت داده پرسنل، هشدار، اقدام اصلاحی و معماری
             ماژول فارسی — مشابه افزونه وردپرس قابل توسعه است.
           </p>
         </div>
@@ -354,18 +353,18 @@ async function AboutTab() {
         </div>
         <div>
           <small>مجوز</small>
-          <strong>Proprietary</strong>
+          <strong>اختصاصی</strong>
         </div>
         <div>
           <small>نام داخلی</small>
-          <strong dir="ltr">Smart Manager</strong>
+          <strong>اسمارت منیجر</strong>
         </div>
         <div>
           <small>شناسه</small>
           <strong dir="ltr">smart-manager</strong>
         </div>
         <div>
-          <small>حداقل Node</small>
+          <small>حداقل نسخهٔ نود</small>
           <strong dir="ltr">20+</strong>
         </div>
         <div>
@@ -380,25 +379,25 @@ async function AboutTab() {
         </div>
       </div>
       <div className="sm-about-tags">
-        <span>core</span>
-        <span>kpi</span>
-        <span>nest</span>
-        <span>next</span>
-        <span>rtl</span>
+        <span>هسته</span>
+        <span>شاخص عملکرد</span>
+        <span>نِست</span>
+        <span>نِکست</span>
+        <span>راست‌به‌چپ</span>
       </div>
       <h3>محیط اجرا</h3>
       <div className="sm-about-env__grid">
         <div>
-          <small>Node</small>
+          <small>نود</small>
           <strong dir="ltr">{process.version}</strong>
         </div>
         <div>
           <small>رابط</small>
-          <strong dir="ltr">Next.js</strong>
+          <strong>نکست.جی‌اس</strong>
         </div>
         <div>
           <small>سرویس</small>
-          <strong dir="ltr">NestJS</strong>
+          <strong>نست.جی‌اس</strong>
         </div>
         <div>
           <small>نسخه هسته</small>
@@ -434,7 +433,7 @@ async function AboutTab() {
 
 function moduleCopyLead(slug: string) {
   if (slug === "kpi-management")
-    return "تعریف شاخص‌های کلیدی عملکرد، ثبت دوره‌ای مقدار توسط پرسنل، محاسبه سلامت سبز/زرد/قرمز استودیو KPI.";
+    return "تعریف شاخص‌های کلیدی عملکرد، ثبت دوره‌ای مقدار توسط پرسنل، محاسبه سلامت سبز/زرد/قرمز استودیوی شاخص‌ها.";
   if (slug === "corrective-actions")
     return "مدیریت هشدارها و کانبان اقدام اصلاحی؛ به کانبان اقدام‌ها از طریق قالب وصل می‌شود.";
   if (slug === "sms-ippanel-hub")

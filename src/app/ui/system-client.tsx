@@ -130,7 +130,7 @@ export function GeneralSettings({
               if (next) setPreview(URL.createObjectURL(next));
             }}
           />
-          <small>JPG، PNG یا WebP. تا یک مگابایت.</small>
+          <small>تصاویر با فرمت جی‌پی‌جی، پی‌ان‌جی یا وب‌پی؛ حداکثر یک مگابایت.</small>
         </div>
       </div>
       {message && (
@@ -294,11 +294,11 @@ export function KpiOptionGroups({
   return (
     <div className="sm-settings-section">
       <p className="sm-settings-lead">
-        گزینه‌های این فهرست در پاپ‌آپ ساخت KPI به‌عنوان لیست بازشو دیده می‌شوند.
+        گزینه‌های این فهرست در پنجرهٔ ساخت شاخص عملکرد به‌عنوان فهرست بازشو دیده می‌شوند.
       </p>
       <section>
         <h2>نوع ورودی</h2>
-        <p>در پاپ‌آپ ساخت KPI در فهرست نوع ورودی دیده می‌شود.</p>
+        <p>در پنجرهٔ ساخت شاخص عملکرد، در فهرست نوع ورودی دیده می‌شود.</p>
         <OptionRows
           rows={inputModes}
           addLabel="افزودن"
@@ -358,7 +358,7 @@ export function PriorityEditor({ rows }: { rows: NamedRow[] }) {
 
 const moduleCopy: Record<string, { lead: string; depends: string }> = {
   "kpi-management": {
-    lead: "تعریف شاخص‌های کلیدی عملکرد، ثبت دوره‌ای مقدار توسط پرسنل، محاسبه سلامت سبز/زرد/قرمز استودیو KPI.",
+    lead: "تعریف شاخص‌های کلیدی عملکرد، ثبت دوره‌ای مقدار توسط پرسنل، محاسبه سلامت سبز/زرد/قرمز استودیوی شاخص‌ها.",
     depends: "ثبت‌های من و گزارش هفتگی در محدوده واحد سازمانی.",
   },
   "corrective-actions": {
@@ -452,7 +452,7 @@ export function ModulesTable({ rows }: { rows: ModuleRow[] }) {
                 <span>
                   <strong>{row.name}</strong>
                   <small>{copy?.lead ?? "ماژول نصب‌شده سامانه."}</small>
-                  <em>Proprietary · v{row.version} · تیم اسمارت‌لوکس</em>
+                  <em>اختصاصی · نسخهٔ {row.version} · تیم اسمارت‌لوکس</em>
                 </span>
               </div>
               <span dir="ltr">{row.version}</span>
@@ -515,7 +515,55 @@ function eventMeta(action: string) {
     return { label: "ورود ناموفق", tone: "is-bad" };
   if (value.includes("login") || value.includes("session.created"))
     return { label: "ورود موفق", tone: "is-ok" };
-  return { label: action.replaceAll(".", " "), tone: "" };
+  const words: Record<string, string> = {
+    access: "دسترسی",
+    action: "اقدام",
+    actions: "اقدام‌ها",
+    alert: "هشدار",
+    alerts: "هشدارها",
+    approve: "تأیید",
+    approved: "تأیید",
+    checkin: "ثبت داده",
+    close: "بستن",
+    closed: "بسته‌شدن",
+    company: "شرکت",
+    create: "ایجاد",
+    created: "ایجاد",
+    data: "داده",
+    department: "واحد",
+    delete: "حذف",
+    deleted: "حذف",
+    formula: "فرمول",
+    invitation: "دعوت",
+    kpi: "شاخص عملکرد",
+    module: "ماژول",
+    modules: "ماژول‌ها",
+    permission: "مجوز",
+    publish: "انتشار",
+    published: "انتشار",
+    redflag: "پرچم قرمز",
+    reject: "رد",
+    rejected: "رد",
+    report: "گزارش",
+    review: "بازبینی",
+    role: "نقش",
+    roles: "نقش‌ها",
+    settings: "تنظیمات",
+    sms: "پیامک",
+    submit: "ثبت",
+    submitted: "ثبت",
+    tenant: "سازمان",
+    update: "ویرایش",
+    updated: "ویرایش",
+    user: "کاربر",
+    users: "کاربران",
+    view: "مشاهده",
+  };
+  const label = action
+    .split(/[._-]+/)
+    .map((part) => words[part.toLowerCase()] ?? part)
+    .join(" ");
+  return { label, tone: "" };
 }
 
 function stamp(value: string) {

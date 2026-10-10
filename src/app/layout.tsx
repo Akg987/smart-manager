@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s | اسمارت منیجر",
   },
   description: "هسته مدیریت هوشمند اسمارت منیجر",
-  applicationName: "Smart Manager",
+  applicationName: "اسمارت منیجر",
   icons: {
     icon: "/images/favicon.png",
     apple: "/images/favicon.png",

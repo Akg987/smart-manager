@@ -72,6 +72,10 @@ export class CorrectiveActionsService {
     return this.repository.create(...args);
   }
 
+  createForm(...args: Parameters<CorrectiveActionsRepository["createForm"]>) {
+    return this.repository.createForm(...args);
+  }
+
   updateStatus(
     ...args: Parameters<CorrectiveActionsRepository["updateStatus"]>
   ) {

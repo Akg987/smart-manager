@@ -1994,11 +1994,31 @@ export const correctiveActions = pgTable(
   "corrective_actions",
   {
     id: id(),
+    companyId: foreignId("company_id").references(
+      (): AnyPgColumn => companies.id,
+      { onDelete: "restrict" },
+    ),
+    businessUnitId: foreignId("business_unit_id").references(
+      (): AnyPgColumn => businessUnits.id,
+      { onDelete: "restrict" },
+    ),
     departmentId: foreignId("department_id")
       .references((): AnyPgColumn => departments.id, { onDelete: "restrict" })
       .notNull(),
     alertId: foreignId("alert_id").references(
       (): AnyPgColumn => correctiveAlerts.id,
+      { onDelete: "set null" },
+    ),
+    sourceKpiId: foreignId("source_kpi_id").references(
+      (): AnyPgColumn => kpiManagementKpis.id,
+      { onDelete: "set null" },
+    ),
+    sourceRedFlagId: foreignId("source_red_flag_id").references(
+      (): AnyPgColumn => redFlags.id,
+      { onDelete: "set null" },
+    ),
+    sourceDecisionId: foreignId("source_decision_id").references(
+      (): AnyPgColumn => managementDecisions.id,
       { onDelete: "set null" },
     ),
     title: varchar("title", { length: 240 }).notNull(),
@@ -2024,10 +2044,17 @@ export const correctiveActions = pgTable(
     delayReason: text("delay_reason"),
     priority: varchar("priority", { length: 80 }).notNull(),
     dueAt: timestamp("due_at", { withTimezone: true, mode: "date" }),
+    evaluationDueAt: date("evaluation_due_at", { mode: "string" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    index("corrective_actions_company_business_unit_index").on(
+      table.companyId,
+      table.businessUnitId,
+    ),
+    index("corrective_actions_source_red_flag_index").on(table.sourceRedFlagId),
+    index("corrective_actions_source_decision_index").on(table.sourceDecisionId),
     index("corrective_actions_alert_id_foreign").on(table.alertId),
     index("corrective_actions_created_by_foreign").on(table.createdBy),
     index("corrective_actions_department_id_status_index").on(

@@ -11,17 +11,24 @@ import {
   MaxLength,
 } from "class-validator";
 export class CreateActionDto {
-  @Type(() => Number) @IsNumber() departmentId!: number;
+  @Type(() => Number) @IsInt() @Min(1) businessUnitId!: number;
+  @IsOptional() @Type(() => Number) @IsNumber() departmentId?: number;
   @IsOptional() @Type(() => Number) @IsNumber() alertId?: number | null;
-  @IsString() @MaxLength(240) title!: string;
+  @IsOptional() @IsIn(["kpi", "redflag", "decision"]) sourceType?:
+    | "kpi"
+    | "redflag"
+    | "decision";
+  @IsOptional() @Type(() => Number) @IsNumber() sourceId?: number | null;
+  @IsString() @IsNotEmpty() @MaxLength(240) title!: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
-  @IsString() @MaxLength(240) successMetric!: string;
+  @IsString() @IsNotEmpty() @MaxLength(240) successMetric!: string;
   @IsOptional() @Type(() => Number) @IsNumber() baseline?: number | null;
   @IsOptional() @Type(() => Number) @IsNumber() target?: number | null;
   @Type(() => Number) @IsNumber() ownerUserId!: number;
   @Type(() => Number) @IsNumber() approverUserId!: number;
-  @IsString() priority!: string;
-  @IsString() dueAt!: string;
+  @IsString() @IsNotEmpty() priority!: string;
+  @IsString() @IsNotEmpty() dueAt!: string;
+  @IsString() @IsNotEmpty() evaluationDueAt!: string;
 }
 export class ActionStatusDto {
   @IsIn([

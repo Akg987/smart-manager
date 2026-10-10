@@ -15,7 +15,7 @@ export default function ApprovalPendingPage() {
         <span aria-hidden="true" className="mt-0.5 font-bold">!</span>
         درخواست ثبت‌نام شما برای بررسی مدیر ارسال شده است.
       </div>
-      <Link href="/login" className="inline-flex h-10 w-full items-center justify-center rounded-md bg-brand-copper px-4 text-sm font-medium text-white hover:bg-brand-muted">
+      <Link href="/login" className="inline-flex h-10 w-full items-center justify-center rounded-md bg-brand-copper px-4 text-sm font-medium text-white hover:bg-brand-copper-hover">
         بازگشت به ورود
       </Link>
     </AuthFrame>

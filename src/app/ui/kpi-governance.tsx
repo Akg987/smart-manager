@@ -7,6 +7,36 @@ import { useAuthContext } from "@/contexts/auth-context";
 import { apiFetch, parseApiBody } from "@/lib/api";
 
 type Row = Record<string, unknown>;
+const apiLabels: Record<string, string> = {
+  kpi_below_threshold: "شاخص عملکرد کمتر از آستانه",
+  kpi_above_threshold: "شاخص عملکرد بیشتر از آستانه",
+  multiple_period_degradation: "افت چنددوره‌ای",
+  data_missing: "داده ثبت‌نشده",
+  data_stale: "داده کهنه",
+  action_overdue: "اقدام معوق",
+  decision_overdue: "تصمیم معوق",
+  draft: "پیش‌نویس",
+  published: "منتشرشده",
+  pending: "در انتظار بررسی",
+  reviewed: "بازبینی‌شده",
+  approved: "تأییدشده",
+  rejected: "ردشده",
+  proposed: "پیشنهادی",
+  completed: "تکمیل‌شده",
+  open: "باز",
+  acknowledged: "دیده‌شده",
+  closed: "بسته",
+  resolved: "رسیدگی‌شده",
+  in_progress: "در حال اجرا",
+  critical: "بحرانی",
+  high: "زیاد",
+  medium: "متوسط",
+  low: "کم",
+};
+function displayApiValue(value: unknown) {
+  const text = String(value ?? "—");
+  return apiLabels[text] ?? text;
+}
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await apiFetch(`/api/${path}`, {
     ...init,
@@ -43,7 +73,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
+    <section className="sm-governance-panel rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
       <h2 className="mb-4 text-lg font-semibold">{title}</h2>
       {children}
     </section>
@@ -106,7 +136,7 @@ function Table({
             >
               {columns.map(([key]) => (
                 <td className="px-3 py-3" key={key}>
-                  {String(row[key] ?? "—")}
+                  {displayApiValue(row[key])}
                 </td>
               ))}
             </tr>
@@ -155,7 +185,7 @@ export function KpiReviewPage() {
   });
   const rows = q.data ?? [];
   return (
-    <Panel title="صف بررسی داده‌های KPI">
+    <Panel title="صف بررسی داده‌های شاخص عملکرد">
       <State
         loading={q.isLoading}
         error={q.error}
@@ -274,19 +304,19 @@ export function RedFlagPage() {
   });
   const rows = q.data ?? [];
   return (
-    <div className="space-y-4">
+    <div className="sm-kpi-governance-page">
       {can("redflag.create") && (
         <Panel title="ثبت پرچم قرمز">
-          <div className="grid gap-3">
+          <div className="sm-red-flag-form grid gap-3">
             <input
-              className="rounded-md border bg-background p-2"
+              className="w-full min-w-0 rounded-md border bg-background p-2"
               aria-label="شرح پرچم"
               placeholder="شرح انحراف یا ریسک"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
             <input
-              className="rounded-md border bg-background p-2"
+              className="w-full min-w-0 rounded-md border bg-background p-2"
               aria-label="علت احتمالی"
               placeholder="علت احتمالی (در صورت نامشخص، خالی بگذارید)"
               value={cause}
@@ -308,7 +338,7 @@ export function RedFlagPage() {
           </div>
         </Panel>
       )}
-      <Panel title="قواعد قابل تنظیم Red Flag">
+      <Panel title="قواعد قابل تنظیم پرچم قرمز">
         <State
           loading={rules.isLoading}
           error={rules.error}
@@ -319,13 +349,13 @@ export function RedFlagPage() {
         {can("redflag.create") && (
           <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_10rem_auto]">
             <select
-              className="rounded-md border bg-background p-2"
+              className="w-full min-w-0 rounded-md border bg-background p-2"
               value={ruleTrigger}
               onChange={(event) => setRuleTrigger(event.target.value)}
               aria-label="محرک قاعده"
             >
-              <option value="kpi_below_threshold">KPI کمتر از آستانه</option>
-              <option value="kpi_above_threshold">KPI بیشتر از آستانه</option>
+              <option value="kpi_below_threshold">شاخص عملکرد کمتر از آستانه</option>
+              <option value="kpi_above_threshold">شاخص عملکرد بیشتر از آستانه</option>
               <option value="multiple_period_degradation">افت چنددوره‌ای</option>
               <option value="data_missing">داده ثبت‌نشده</option>
               <option value="data_stale">داده کهنه</option>
@@ -333,7 +363,7 @@ export function RedFlagPage() {
               <option value="decision_overdue">تصمیم معوق</option>
             </select>
             <select
-              className="rounded-md border bg-background p-2"
+              className="w-full min-w-0 rounded-md border bg-background p-2"
               value={ruleSeverity}
               onChange={(event) => setRuleSeverity(event.target.value)}
               aria-label="شدت پرچم"
@@ -359,7 +389,7 @@ export function RedFlagPage() {
             className="flex flex-wrap items-center justify-between gap-2 border-t py-3 text-sm"
           >
             <span>
-              {String(rule.trigger)} · شدت {String(rule.severity)} ·{" "}
+              {displayApiValue(rule.trigger)} · شدت {displayApiValue(rule.severity)} ·{" "}
               {rule.enabled ? "فعال" : "غیرفعال"}
             </span>
             {can("redflag.update") && (
@@ -435,9 +465,9 @@ export function RedFlagPage() {
               <div>
                 <strong>{String(row.description)}</strong>
                 <p className="text-sm text-muted-foreground">
-                  شدت {String(row.severity)} · دوره {String(row.period ?? "—")}{" "}
+                  شدت {displayApiValue(row.severity)} · دوره {String(row.period ?? "—")}{" "}
                   · علت {String(row.suspectedCause ?? "نامشخص")} · وضعیت{" "}
-                  {String(row.status)}
+                  {displayApiValue(row.status)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -545,7 +575,7 @@ export function ObservationPage() {
   });
   const rows = q.data ?? [];
   return (
-    <div className="space-y-4">
+    <div className="sm-kpi-governance-page">
       <Panel title="ثبت مشاهده مدیریتی">
         <label className="mb-2 block text-sm" htmlFor="observation">
           یادداشت مشاهده
@@ -607,9 +637,9 @@ export function KpiHistoryPage() {
   const status = String(q.data?.definition?.status ?? "—");
   return (
     <div className="space-y-4">
-      <Panel title="چرخهٔ تعریف KPI">
+      <Panel title="چرخهٔ تعریف شاخص عملکرد">
         <p className="mb-3 text-sm">
-          وضعیت فعلی: {status} · نسخه{" "}
+          وضعیت فعلی: {displayApiValue(status)} · نسخه{" "}
           {String(q.data?.definition?.version ?? "—")}
         </p>
         {status === "draft" && (
@@ -675,7 +705,7 @@ export function KpiDetailPage() {
   const kpi = q.data?.definition;
   return (
     <div className="space-y-4">
-      <Panel title={String(kpi?.name ?? "جزئیات KPI")}>
+      <Panel title={String(kpi?.name ?? "جزئیات شاخص عملکرد")}>
         <State loading={q.isLoading} error={q.error} />
         {kpi && (
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -701,7 +731,7 @@ export function KpiDetailPage() {
             className={`mt-4 rounded-md border p-3 text-sm ${["missing", "null", "late", "stale"].includes(String(q.data.latest.dataState)) ? "bg-muted text-muted-foreground" : ""}`}
           >
             آخرین مقدار تأییدشده: {String(q.data.latest.actualValue ?? "—")}{" "}
-            {String(kpi?.unit ?? "")} · سلامت KPI:{" "}
+            {String(kpi?.unit ?? "")} · سلامت شاخص عملکرد:{" "}
             {String(q.data.latest.status)} · وضعیت داده:{" "}
             {String(q.data.latest.dataState)}
           </p>
@@ -791,7 +821,7 @@ export function KpiDataEntryPage() {
     });
   };
   return (
-    <Panel title={`ثبت داده KPI · ${String(kpi?.name ?? "")}`}>
+    <Panel title={`ثبت دادهٔ شاخص عملکرد · ${String(kpi?.name ?? "")}`}>
       <State loading={q.isLoading} error={q.error} />
       {kpi && (
         <form className="grid max-w-2xl gap-4" onSubmit={submit}>

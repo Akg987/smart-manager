@@ -14,6 +14,7 @@ import {
   desc,
   eq,
   inArray,
+  isNull,
   max,
   ne,
   or,
@@ -29,12 +30,17 @@ import { jalaliDateToGregorian } from "../../shared/jalali.js";
 import {
   actionPriorities,
   auditLogs,
+  businessUnits,
+  companies,
   correctiveActions,
   correctiveActionEvidence,
   correctiveAlerts,
   departments,
   inboxNotifications,
   kpiManagementKpis,
+  managementDecisions,
+  managementDecisionActions,
+  redFlags,
   users,
   type ActionStatus,
   type AlertSeverity,
@@ -287,6 +293,206 @@ export class CorrectiveActionsRepository extends BaseRepository {
     return medium?.name ?? (await this.listPriorities())[0]?.name ?? "";
   }
 
+  async createForm(actorId: bigint) {
+    if (!(await this.authorization.hasPermission(actorId, "action.create")))
+      throw new ForbiddenException("You cannot create actions.");
+    const context = this.authorization.currentContext(actorId);
+    if (!context?.companyId)
+      throw new ForbiddenException(
+        "Select an active company to create actions.",
+      );
+    const companyId = BigInt(context.companyId);
+    const departmentIds = await this.authorization.departmentsForPermission(
+      actorId,
+      "action.create",
+    );
+    const units = departmentIds.length
+      ? await this.db
+          .select({
+            id: businessUnits.id,
+            name: businessUnits.name,
+            departmentId: businessUnits.legacyDepartmentId,
+          })
+          .from(businessUnits)
+          .where(
+            and(
+              eq(businessUnits.companyId, companyId),
+              eq(businessUnits.status, "active"),
+              inArray(businessUnits.legacyDepartmentId, departmentIds),
+            ),
+          )
+          .orderBy(asc(businessUnits.name))
+      : [];
+    const scopedUnits = context.businessUnitId
+      ? units.filter((unit) => unit.id.toString() === context.businessUnitId)
+      : units;
+    const scopedDepartmentIds = scopedUnits
+      .map((unit) => unit.departmentId)
+      .filter((id): id is bigint => id !== null);
+    const [company] = await this.db
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
+    const [priorities, people] = await Promise.all([
+      this.listPriorities(),
+      scopedDepartmentIds.length
+        ? this.db
+            .select({
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              mobile: users.mobile,
+              departmentId: users.departmentId,
+            })
+            .from(users)
+            .where(
+              and(
+                inArray(users.departmentId, scopedDepartmentIds),
+                sql`${users.approvedAt} is not null`,
+              ),
+            )
+            .orderBy(asc(users.firstName), asc(users.lastName))
+        : Promise.resolve([]),
+    ]);
+    const sources: {
+      kpis: { id: string; name: string; businessUnitId: string | null }[];
+      redFlags: { id: string; name: string; businessUnitId: string | null }[];
+      decisions: { id: string; name: string; businessUnitId: string | null }[];
+    } = { kpis: [], redFlags: [], decisions: [] };
+    const unitIds = scopedUnits.map((unit) => unit.id);
+    if (
+      unitIds.length &&
+      (await this.authorization.hasPermission(actorId, "kpi.view"))
+    ) {
+      const candidates = await this.db
+        .select({
+          id: kpiManagementKpis.id,
+          name: kpiManagementKpis.name,
+          businessUnitId: kpiManagementKpis.businessUnitId,
+        })
+        .from(kpiManagementKpis)
+        .where(
+          and(
+            eq(kpiManagementKpis.companyId, companyId),
+            inArray(kpiManagementKpis.businessUnitId, unitIds),
+            eq(kpiManagementKpis.active, true),
+          ),
+        );
+      for (const item of candidates) {
+        if (await this.authorization.canAccessKpi(actorId, item.id, "kpi.view"))
+          sources.kpis.push({
+            id: item.id.toString(),
+            name: item.name,
+            businessUnitId: item.businessUnitId?.toString() ?? null,
+          });
+      }
+    }
+    if (
+      unitIds.length &&
+      (await this.authorization.hasPermission(actorId, "redflag.view"))
+    ) {
+      const candidates = await this.db
+        .select({
+          id: redFlags.id,
+          name: redFlags.description,
+          businessUnitId: redFlags.businessUnitId,
+        })
+        .from(redFlags)
+        .where(
+          and(
+            eq(redFlags.companyId, companyId),
+            inArray(redFlags.businessUnitId, unitIds),
+            isNull(redFlags.actionId),
+            ne(redFlags.status, "closed"),
+          ),
+        );
+      for (const item of candidates) {
+        const unit = scopedUnits.find(
+          (candidate) => candidate.id === item.businessUnitId,
+        );
+        if (
+          unit?.departmentId &&
+          (await this.authorization.canAccessDepartment(
+            actorId,
+            unit.departmentId,
+            false,
+            "redflag.view",
+          ))
+        )
+          sources.redFlags.push({
+            id: item.id.toString(),
+            name: item.name,
+            businessUnitId: item.businessUnitId?.toString() ?? null,
+          });
+      }
+    }
+    if (
+      unitIds.length &&
+      (await this.authorization.hasPermission(actorId, "decision.view"))
+    ) {
+      const candidates = await this.db
+        .select({
+          id: managementDecisions.id,
+          name: managementDecisions.decisionText,
+          businessUnitId: managementDecisions.businessUnitId,
+        })
+        .from(managementDecisions)
+        .where(
+          and(
+            eq(managementDecisions.companyId, companyId),
+            inArray(managementDecisions.businessUnitId, unitIds),
+            ne(managementDecisions.status, "closed"),
+          ),
+        );
+      for (const item of candidates) {
+        const unit = scopedUnits.find(
+          (candidate) => candidate.id === item.businessUnitId,
+        );
+        if (
+          unit?.departmentId &&
+          (await this.authorization.canAccessDepartment(
+            actorId,
+            unit.departmentId,
+            false,
+            "decision.view",
+          ))
+        )
+          sources.decisions.push({
+            id: item.id.toString(),
+            name: item.name,
+            businessUnitId: item.businessUnitId?.toString() ?? null,
+          });
+      }
+    }
+    const unitIdByDepartment = new Map(
+      scopedUnits.flatMap((unit) =>
+        unit.departmentId
+          ? [[unit.departmentId.toString(), unit.id.toString()] as const]
+          : [],
+      ),
+    );
+    return {
+      actorId: actorId.toString(),
+      company: company
+        ? { id: company.id.toString(), name: company.name }
+        : null,
+      businessUnits: scopedUnits.map((unit) => ({
+        id: unit.id.toString(),
+        name: unit.name,
+      })),
+      people: people.map((person) => ({
+        ...person,
+        id: person.id.toString(),
+        businessUnitId: person.departmentId
+          ? (unitIdByDepartment.get(person.departmentId.toString()) ?? null)
+          : null,
+      })),
+      priorities,
+      sources,
+    };
+  }
+
   async addPriority(name: string) {
     const normalized = name.trim().slice(0, 80);
     if (!normalized)
@@ -354,8 +560,11 @@ export class CorrectiveActionsRepository extends BaseRepository {
   }
 
   async create(input: {
-    departmentId: bigint;
+    departmentId?: bigint;
+    businessUnitId?: bigint;
     alertId?: bigint | null;
+    sourceType?: "kpi" | "redflag" | "decision" | null;
+    sourceId?: bigint | null;
     title: string;
     description?: string;
     successMetric: string;
@@ -366,6 +575,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
     createdBy: bigint;
     priority: string;
     dueAt: string;
+    evaluationDueAt?: string;
   }) {
     if (
       !(await this.authorization.hasPermission(
@@ -374,10 +584,51 @@ export class CorrectiveActionsRepository extends BaseRepository {
       ))
     )
       throw new ForbiddenException("You cannot create actions.");
+    const tenantContext = this.authorization.currentContext(input.createdBy);
+    if (!tenantContext?.companyId)
+      throw new ForbiddenException("An active company is required.");
+    const companyId = BigInt(tenantContext.companyId);
+    const [unit] = input.businessUnitId
+      ? await this.db
+          .select({
+            id: businessUnits.id,
+            companyId: businessUnits.companyId,
+            departmentId: businessUnits.legacyDepartmentId,
+          })
+          .from(businessUnits)
+          .where(eq(businessUnits.id, input.businessUnitId))
+          .limit(1)
+      : input.departmentId
+        ? await this.db
+            .select({
+              id: businessUnits.id,
+              companyId: businessUnits.companyId,
+              departmentId: businessUnits.legacyDepartmentId,
+            })
+            .from(businessUnits)
+            .where(
+              and(
+                eq(businessUnits.companyId, companyId),
+                eq(businessUnits.legacyDepartmentId, input.departmentId),
+              ),
+            )
+            .limit(1)
+        : [];
+    const businessUnitId = input.businessUnitId ?? unit?.id;
+    const departmentId = unit?.departmentId;
+    if (
+      !unit ||
+      unit.companyId !== companyId ||
+      !departmentId ||
+      (input.departmentId != null && input.departmentId !== departmentId)
+    )
+      throw new ForbiddenException(
+        "Business unit is outside the active company or department scope.",
+      );
     if (
       !(await this.authorization.canAccessDepartment(
         input.createdBy,
-        input.departmentId,
+        departmentId,
         false,
         "action.create",
       ))
@@ -392,7 +643,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
         .from(users)
         .where(eq(users.id, input.ownerUserId))
         .limit(1);
-      if (!owner?.approvedAt || owner.departmentId !== input.departmentId)
+      if (!owner?.approvedAt || owner.departmentId !== departmentId)
         throw new ForbiddenException(
           "Action owner is outside the actor's accessible departments.",
         );
@@ -406,7 +657,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
         .limit(1);
       if (
         !approver?.approvedAt ||
-        approver.departmentId !== input.departmentId ||
+        approver.departmentId !== departmentId ||
         input.approverUserId === input.ownerUserId
       )
         throw new ForbiddenException(
@@ -421,7 +672,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
           .from(correctiveAlerts)
           .where(eq(correctiveAlerts.id, input.alertId))
           .limit(1);
-        if (!alert || alert.departmentId !== input.departmentId)
+        if (!alert || alert.departmentId !== departmentId)
           throw new NotFoundException(
             "Alert not found in the selected department.",
           );
@@ -435,11 +686,119 @@ export class CorrectiveActionsRepository extends BaseRepository {
         throw new BadRequestException("Action priority does not exist.");
       const dueDate = jalaliDateToGregorian(input.dueAt);
       if (!dueDate) throw new BadRequestException("Invalid Jalali due date.");
+      const evaluationDate = input.evaluationDueAt
+        ? jalaliDateToGregorian(input.evaluationDueAt)
+        : null;
+      if (input.evaluationDueAt && !evaluationDate)
+        throw new BadRequestException("Invalid Jalali evaluation date.");
+      let sourceKpiId: bigint | null = null;
+      let sourceRedFlagId: bigint | null = null;
+      let sourceDecisionId: bigint | null = null;
+      if (input.sourceType && input.sourceId) {
+        if (input.sourceType === "kpi") {
+          const [source] = await tx
+            .select({
+              id: kpiManagementKpis.id,
+              businessUnitId: kpiManagementKpis.businessUnitId,
+            })
+            .from(kpiManagementKpis)
+            .where(
+              and(
+                eq(kpiManagementKpis.id, input.sourceId),
+                eq(kpiManagementKpis.companyId, companyId),
+                eq(kpiManagementKpis.active, true),
+              ),
+            )
+            .limit(1);
+          if (
+            !source ||
+            source.businessUnitId !== businessUnitId ||
+            !(await this.authorization.canAccessKpi(
+              input.createdBy,
+              input.sourceId,
+              "kpi.view",
+            ))
+          )
+            throw new NotFoundException(
+              "KPI source not found in the selected business unit.",
+            );
+          sourceKpiId = source.id;
+        } else if (input.sourceType === "redflag") {
+          const [source] = await tx
+            .select({
+              id: redFlags.id,
+              businessUnitId: redFlags.businessUnitId,
+            })
+            .from(redFlags)
+            .where(
+              and(
+                eq(redFlags.id, input.sourceId),
+                eq(redFlags.companyId, companyId),
+                isNull(redFlags.actionId),
+                ne(redFlags.status, "closed"),
+              ),
+            )
+            .for("update")
+            .limit(1);
+          if (
+            !source ||
+            source.businessUnitId !== businessUnitId ||
+            !(await this.authorization.canAccessDepartment(
+              input.createdBy,
+              departmentId,
+              false,
+              "redflag.view",
+            ))
+          )
+            throw new NotFoundException(
+              "Red Flag source not found in the selected business unit.",
+            );
+          sourceRedFlagId = source.id;
+        } else {
+          const [source] = await tx
+            .select({
+              id: managementDecisions.id,
+              businessUnitId: managementDecisions.businessUnitId,
+            })
+            .from(managementDecisions)
+            .where(
+              and(
+                eq(managementDecisions.id, input.sourceId),
+                eq(managementDecisions.companyId, companyId),
+                ne(managementDecisions.status, "closed"),
+              ),
+            )
+            .limit(1);
+          if (
+            !source ||
+            source.businessUnitId !== businessUnitId ||
+            !(await this.authorization.canAccessDepartment(
+              input.createdBy,
+              departmentId,
+              false,
+              "decision.view",
+            ))
+          )
+            throw new NotFoundException(
+              "Decision source not found in the selected business unit.",
+            );
+          sourceDecisionId = source.id;
+        }
+      } else if (input.sourceType || input.sourceId) {
+        throw new BadRequestException(
+          "Choose both source type and source record.",
+        );
+      }
       const [action] = await tx
         .insert(correctiveActions)
         .values({
-          departmentId: input.departmentId,
+          companyId,
+          businessUnitId: businessUnitId ?? null,
+          departmentId,
           alertId: input.alertId ?? null,
+          sourceKpiId,
+          sourceRedFlagId,
+          sourceDecisionId,
           title: input.title.slice(0, 240),
           description: input.description?.slice(0, 2000) ?? "",
           successMetric: input.successMetric.slice(0, 240),
@@ -450,10 +809,10 @@ export class CorrectiveActionsRepository extends BaseRepository {
           createdBy: input.createdBy,
           priority: input.priority,
           dueAt: new Date(`${dueDate}T00:00:00.000Z`),
+          evaluationDueAt: evaluationDate,
           status: "proposed",
         })
         .returning();
-      const tenantContext = this.authorization.currentContext(input.createdBy);
       await tx.insert(auditLogs).values({
         userId: input.createdBy,
         holdingId: tenantContext ? BigInt(tenantContext.holdingId) : null,
@@ -470,17 +829,33 @@ export class CorrectiveActionsRepository extends BaseRepository {
           old: null,
           new: {
             status: "proposed",
-            departmentId: input.departmentId.toString(),
+            departmentId: departmentId.toString(),
+            companyId: companyId.toString(),
+            businessUnitId: businessUnitId?.toString() ?? null,
+            sourceType: input.sourceType ?? null,
+            sourceId: input.sourceId?.toString() ?? null,
             ownerUserId: input.ownerUserId.toString(),
             approverUserId: input.approverUserId.toString(),
             dueAt: action.dueAt?.toISOString() ?? null,
             baseline: action.baseline,
             target: action.target,
+            evaluationDueAt: action.evaluationDueAt,
           },
         },
         ipAddress: null,
         userAgent: null,
       });
+      if (sourceDecisionId)
+        await tx.insert(managementDecisionActions).values({
+          decisionId: sourceDecisionId,
+          actionId: action.id,
+          createdBy: input.createdBy,
+        });
+      if (sourceRedFlagId)
+        await tx
+          .update(redFlags)
+          .set({ actionId: action.id, updatedAt: new Date() })
+          .where(eq(redFlags.id, sourceRedFlagId));
       if (input.ownerUserId !== input.createdBy)
         await tx.insert(inboxNotifications).values({
           userId: input.ownerUserId,
@@ -1037,6 +1412,10 @@ export class CorrectiveActionsRepository extends BaseRepository {
       this.authorization.departmentsForPermission(actorId, "actions.view"),
       this.authorization.departmentsForPermission(actorId, "actions.manage"),
     ]);
+    const canCreate = await this.authorization.hasPermission(
+      actorId,
+      "action.create",
+    );
     const scopedDepartmentIds = [
       ...new Set([...viewDepartmentIds, ...manageDepartmentIds]),
     ];
@@ -1145,6 +1524,7 @@ export class CorrectiveActionsRepository extends BaseRepository {
     const column = (status: ActionStatus) =>
       cards.filter((card) => card.status === status);
     return {
+      canCreate,
       proposed: [...column("proposed"), ...column("open")],
       approved: column("approved"),
       in_progress: column("in_progress"),

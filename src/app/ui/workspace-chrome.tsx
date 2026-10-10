@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CompanySwitcher } from "@/components/company-switcher";
 import { useAuthContext } from "@/contexts/auth-context";
@@ -25,7 +25,7 @@ const beforeOrg = [
     label: "مشاهدات مدیریتی",
     href: "/observations",
     icon: "ni-eye",
-    permission: "company.view",
+    permission: "kpi.view",
   },
   {
     label: "پرچم‌های قرمز",
@@ -46,13 +46,13 @@ const beforeOrg = [
     permission: "action.view",
   },
   {
-    label: "استودیو KPI",
+    label: "استودیوی شاخص‌های عملکرد",
     href: "/kpis",
     icon: "ni-growth",
     permission: "kpi.view",
   },
   {
-    label: "واردسازی KPI",
+    label: "واردسازی شاخص عملکرد",
     href: "/kpis/import",
     icon: "ni-upload",
     permission: "kpi.submit",
@@ -83,31 +83,31 @@ const afterOrg = [
     permission: "ai.chat",
   },
   {
-    label: "Dashboard Builder",
+    label: "سازنده داشبورد",
     href: "/dashboards",
     icon: "ni-grid-alt",
     permission: "dashboard.view",
   },
   {
-    label: "Formula Studio",
+    label: "استودیوی فرمول‌ها",
     href: "/formulas",
     icon: "ni-calculator",
     permission: "formula.view",
   },
   {
-    label: "Decisions",
+    label: "تصمیم‌ها",
     href: "/decisions",
     icon: "ni-check-circle",
     permission: "decision.view",
   },
   {
-    label: "WBR / MBR",
+    label: "مرور هفتگی و ماهانه",
     href: "/management-reviews",
     icon: "ni-reports",
     permission: "meeting.view",
   },
   {
-    label: "Reminders & Escalation",
+    label: "یادآوری و تشدید",
     href: "/management-automation",
     icon: "ni-bell",
     permission: "meeting.update",
@@ -248,91 +248,61 @@ function NavLink({
 }
 
 function requiredPagePermission(path: string): string | null {
+  if (["/", "/dashboard"].includes(path)) return "dashboard.view";
+  if (["/profile", "/profile/photo", "/profile/security", "/accept-invitation"].includes(path)) return null;
   if (path === "/ai" || path === "/ai/chat") return "ai.chat";
-  if (path === "/dashboards" || /^\/dashboards\/\d+$/.test(path))
-    return "dashboard.view";
+  if (/^\/dashboards\/\d+\/edit$/.test(path)) return "dashboard.update";
+  if (path === "/dashboards" || /^\/dashboards\/\d+$/.test(path)) return "dashboard.view";
   if (path === "/dashboards/create") return "dashboard.create";
-  if (path === "/formulas" || /^\/formulas\/\d+$/.test(path))
-    return "formula.view";
+  if (/^\/formulas\/\d+\/edit$/.test(path)) return "formula.update";
+  if (path === "/formulas" || /^\/formulas\/\d+$/.test(path)) return "formula.view";
   if (path === "/formulas/create") return "formula.create";
   if (path === "/decisions") return "decision.view";
   if (path === "/management-reviews") return "meeting.view";
   if (path === "/management-reviews/create") return "meeting.create";
+  if (/^\/management-reviews\/\d+\/edit$/.test(path)) return "meeting.update";
   if (/^\/management-reviews\/\d+$/.test(path)) return "meeting.view";
   if (path === "/management-automation") return "meeting.update";
   if (path === "/admin/users") return "users.view";
   if (path === "/admin/departments") return "unit.view";
   if (path === "/admin/tenants") return "company.view";
-  if (
-    path === "/admin/access-levels/create" ||
-    /^\/admin\/access-levels\/[^/]+\/edit$/.test(path)
-  )
-    return "roles.manage";
-  if (
-    path === "/admin/access-levels" ||
-    path === "/admin/roles" ||
-    path === "/settings/roles"
-  )
-    return "roles.view";
+  if (path === "/admin/access-levels/create" || /^\/admin\/access-levels\/[^/]+\/edit$/.test(path)) return "roles.manage";
+  if (["/admin/access-levels", "/admin/roles", "/settings/roles"].includes(path)) return "roles.view";
   if (path === "/admin/audit-log") return "audit.view";
   if (path === "/admin/modules") return "integration.view";
-  if (
-    path === "/settings" ||
-    path === "/settings/general" ||
-    path === "/settings/action-priorities" ||
-    path === "/settings/kpi-options" ||
-    path === "/sms-ippanel-hub"
-  )
-    return "integration.manage";
+  if (path === "/settings/about") return "integration.view";
+  if (["/settings", "/settings/general", "/settings/action-priorities", "/settings/kpi-options", "/sms-ippanel-hub"].includes(path)) return "integration.manage";
   if (path === "/kpis/create") return "kpi.create";
   if (path === "/kpis/import") return "kpi.submit";
   if (/^\/kpis\/[^/]+\/edit$/.test(path)) return "kpi.update";
-  if (path === "/kpis" || /^\/kpis\/[^/]+(?:\/history)?$/.test(path))
-    return "kpi.view";
   if (/^\/kpis\/[^/]+\/data$/.test(path)) return "kpi.submit";
+  if (path === "/kpis" || /^\/kpis\/[^/]+(?:\/history)?$/.test(path)) return "kpi.view";
   if (path === "/checkins") return "kpi.submit";
   if (path === "/checkins/review") return "kpi.review";
   if (path === "/red-flags") return "redflag.view";
-  if (path === "/alerts") return "alert.view";
   if (path === "/observations") return "kpi.view";
   if (path === "/kpi-reports/weekly") return "report.view";
   if (path === "/actions") return "action.view";
   if (path === "/actions/create") return "action.create";
-  return null;
+  if (path === "/alerts") return "alert.view";
+  return "__unmapped_workspace_route__";
 }
 
 function RouteAccessBoundary({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data, isLoading } = useAuthContext();
   const permission = requiredPagePermission(pathname);
-  if (!permission) return children;
-  if (isLoading)
-    return (
-      <div
-        role="status"
-        className="rounded-xl border bg-card p-6 text-sm text-muted-foreground"
-      >
-        در حال بررسی دسترسی…
-      </div>
-    );
-  if (data?.permissions.includes(permission)) return children;
-  return (
-    <section
-      role="alert"
-      className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm"
-    >
-      <h1 className="text-xl font-semibold">دسترسی به این صفحه مجاز نیست</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        این بخش در مجوزهای حساب شما قرار ندارد.
-      </p>
-      <Link
-        href="/dashboard"
-        className="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-primary-foreground"
-      >
-        بازگشت به داشبورد
-      </Link>
-    </section>
-  );
+  const allowed = permission === null || Boolean(data?.permissions.includes(permission));
+
+  useEffect(() => {
+    if (!isLoading && !allowed) {
+      router.replace(data ? (data.permissions.includes("dashboard.view") ? "/dashboard" : "/profile") : `/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [allowed, data, isLoading, pathname, router]);
+
+  if (isLoading || !allowed) return null;
+  return children;
 }
 
 export function WorkspaceChrome({
@@ -465,7 +435,7 @@ export function WorkspaceChrome({
       )}
       <div className="nk-main">
         <aside
-          className={`nk-sidebar nk-sidebar-fixed is-dark z-[1030] transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "translate-x-[110%] min-[1200px]:translate-x-0"}`}
+          className={`nk-sidebar sm-sidebar-scroll nk-sidebar-fixed is-dark z-[1030] transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "translate-x-[110%] min-[1200px]:translate-x-0"}`}
           data-content="sidebarMenu"
         >
           <div className="nk-sidebar-element nk-sidebar-head">

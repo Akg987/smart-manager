@@ -18,11 +18,11 @@ export function CompanySwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 shadow-sm">
+      <label className="flex min-h-10 items-center gap-2 rounded-lg border border-brand-line bg-white px-3 py-1 text-sm font-medium text-brand-ink shadow-sm">
         <span className="sr-only">شرکت فعال</span>
         <select
           aria-label="شرکت فعال"
-          className="max-w-40 bg-transparent outline-none disabled:opacity-60"
+          className="max-w-40 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-brand-copper/40 disabled:opacity-60"
           disabled={isLoading || switching}
           value={activeCompanyId}
           onChange={(event) => {

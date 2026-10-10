@@ -23,6 +23,15 @@ type StoredConversation = {
   id: string | number;
   title: string;
 };
+const recommendationStatusLabel: Record<string, string> = {
+  pending: "در انتظار بررسی",
+  accepted: "پذیرفته‌شده",
+  proposed: "پیشنهادی",
+  rejected: "ردشده",
+  applied: "اجراشده",
+  completed: "تکمیل‌شده",
+  dismissed: "ردشده",
+};
 
 async function recoverCompletedChat(question: string): Promise<ChatResult | null> {
   for (let attempt = 0; attempt < 7; attempt += 1) {
@@ -208,7 +217,7 @@ export function AiChatPage() {
         </p>
         <h1 className="mt-2 text-2xl font-bold">دستیار هوشمند مدیریت</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          پاسخ‌ها فقط از KPIها، پرچم‌های قرمز، اقدامات و مشاهدات در محدودهٔ دسترسی
+          پاسخ‌ها فقط از شاخص‌های کلیدی عملکرد، پرچم‌های قرمز، اقدامات و مشاهدات در محدودهٔ دسترسی
           شما استفاده می‌کنند.
         </p>
       </header>
@@ -224,7 +233,7 @@ export function AiChatPage() {
             onKeyDown={(event) => {
               if (event.key === "Enter") void send();
             }}
-            placeholder="مثلاً روند KPIهای این دوره چه تغییری کرده؟"
+            placeholder="مثلاً روند شاخص‌های این دوره چه تغییری کرده؟"
             maxLength={12000}
           />
           <Button
@@ -338,7 +347,7 @@ export function AiChatPage() {
                     )}
                     <div className="mt-3 flex items-center gap-2">
                       <span className="me-auto text-xs text-muted-foreground">
-                        وضعیت: {recommendation.status}
+                        وضعیت: {recommendationStatusLabel[recommendation.status] ?? recommendation.status}
                       </span>
                       {recommendation.status === "pending" && (
                         <>

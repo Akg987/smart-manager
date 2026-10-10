@@ -484,7 +484,7 @@ export function UsersDirectory({
         </div>
         <span className="sm-timezone-badge">
           <em className="icon ni ni-map-pin" />
-          <span>Asia/Tehran</span>
+          <span>منطقه زمانی تهران</span>
         </span>
       </div>
       {departments.length === 0 && (

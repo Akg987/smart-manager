@@ -49,6 +49,9 @@ export class ActionsController {
   @Get("priorities") priorities() {
     return this.service.listPriorities();
   }
+  @Get("create-form") createForm(@Req() req: AuthenticatedRequest) {
+    return this.service.createForm(req.currentUser.id);
+  }
   @Post("priorities") async addPriority(
     @Req() req: AuthenticatedRequest,
     @Body() body: ActionPriorityDto,
@@ -95,8 +98,12 @@ export class ActionsController {
   ) {
     return this.service.create({
       ...body,
-      departmentId: BigInt(body.departmentId),
+      departmentId:
+        body.departmentId == null ? undefined : BigInt(body.departmentId),
+      businessUnitId: BigInt(body.businessUnitId),
       alertId: body.alertId == null ? null : BigInt(body.alertId),
+      sourceId: body.sourceId == null ? null : BigInt(body.sourceId),
+      sourceType: body.sourceType ?? null,
       baseline: body.baseline ?? null,
       target: body.target ?? null,
       ownerUserId: BigInt(body.ownerUserId),

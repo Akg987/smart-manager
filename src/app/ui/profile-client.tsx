@@ -279,7 +279,7 @@ export function PhotoForm({ user }: { user: ProfileUser }) {
       </div>
       <div className="sm-profile-photo-change">
         <h2>تغییر عکس</h2>
-        <p>JPG، PNG یا WEBP. حداکثر ۲۰۰ کیلوبایت، حداکثر ۲۰۰×۲۰۰ پیکسل.</p>
+        <p>تصاویر با فرمت جی‌پی‌جی، پی‌ان‌جی یا وب‌پی؛ حداکثر ۲۰۰ کیلوبایت و ۲۰۰×۲۰۰ پیکسل.</p>
         <label className="form-label" htmlFor="profile-avatar">
           انتخاب تصویر
         </label>

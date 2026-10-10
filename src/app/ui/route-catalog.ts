@@ -59,7 +59,7 @@ const catalog: Record<string, RoutePage> = {
     path: "/ai/chat",
     title: "گفت‌وگوی هوشمند",
     eyebrow: "تحلیل مدیریتی",
-    description: "پرسش دربارهٔ KPIها و گردش‌های مدیریتی در محدودهٔ مجاز.",
+    description: "پرسش دربارهٔ شاخص‌های عملکرد و گردش‌های مدیریتی در محدودهٔ مجاز.",
     kind: "table",
   },
   "/": {
@@ -93,17 +93,17 @@ const catalog: Record<string, RoutePage> = {
   },
   "/formulas": {
     path: "/formulas",
-    title: "Formula Studio",
-    eyebrow: "KPI مشتق‌شده",
+    title: "استودیوی فرمول‌ها",
+    eyebrow: "شاخص عملکرد مشتق‌شده",
     description:
-      "فرمول را اعتبارسنجی و KPI مشتق‌شدهٔ نسخه‌دار ایجاد و محاسبه کنید.",
+      "فرمول را اعتبارسنجی و شاخص عملکرد مشتق‌شدهٔ نسخه‌دار ایجاد و محاسبه کنید.",
     kind: "table",
   },
   "/formulas/create": {
     path: "/formulas/create",
     title: "ساخت فرمول",
-    eyebrow: "Formula Studio",
-    description: "منابع KPI مجاز را به یک فرمول امن و قابل‌ردیابی تبدیل کنید.",
+    eyebrow: "استودیوی فرمول‌ها",
+    description: "منابع مجاز شاخص‌های عملکرد را به فرمولی امن و قابل‌ردیابی تبدیل کنید.",
     kind: "form",
   },
   "/decisions": {
@@ -116,16 +116,16 @@ const catalog: Record<string, RoutePage> = {
   },
   "/management-reviews": {
     path: "/management-reviews",
-    title: "مرورهای WBR و MBR",
+    title: "مرورهای هفتگی و ماهانه",
     eyebrow: "گزارش مدیریتی",
-    description: "جلسه‌های هفتگی و ماهانه را با snapshot دوره‌ای مدیریت کنید.",
+    description: "جلسه‌های هفتگی و ماهانه را با تصویر ثبت‌شدهٔ هر دوره مدیریت کنید.",
     kind: "table",
   },
   "/management-reviews/create": {
     path: "/management-reviews/create",
     title: "ساخت مرور مدیریتی",
     eyebrow: "گزارش مدیریتی",
-    description: "پیش‌نویس WBR یا MBR برای دورهٔ انتخابی ایجاد کنید.",
+    description: "پیش‌نویس مرور هفتگی یا ماهانه را برای دورهٔ انتخابی ایجاد کنید.",
     kind: "form",
   },
   "/management-automation": {
@@ -284,19 +284,19 @@ const catalog: Record<string, RoutePage> = {
   },
   "/kpis": {
     path: "/kpis",
-    title: "استودیو KPI",
-    headline: "KPIها بدون تغییر کد قابل تنظیم‌اند",
-    eyebrow: "قرارداد داده KPI",
+    title: "استودیوی شاخص‌های عملکرد",
+    headline: "شاخص‌های عملکرد بدون تغییر کد قابل تنظیم‌اند",
+    eyebrow: "قرارداد دادهٔ شاخص عملکرد",
     description:
-      "فرمول، هدف، آستانه، نقش‌ها و زمان‌بندی هر KPI نسخه‌دار و قابل پیگیری هستند.",
+      "فرمول، هدف، آستانه، نقش‌ها و زمان‌بندی هر شاخص عملکرد نسخه‌دار و قابل پیگیری هستند.",
     kind: "board",
     board: "kpis",
-    actionLabel: "ساخت KPI",
+    actionLabel: "ساخت شاخص عملکرد",
   },
   "/kpis/create": {
     path: "/kpis/create",
     title: "تعریف شاخص جدید",
-    eyebrow: "قرارداد داده KPI",
+    eyebrow: "قرارداد دادهٔ شاخص عملکرد",
     description: "مشخصات، هدف و آستانه یک شاخص را تعریف کنید.",
     kind: "form",
     form: "kpi",
@@ -307,13 +307,13 @@ const catalog: Record<string, RoutePage> = {
     headline: "ثبت‌هایی که منتظر شما هستند",
     eyebrow: "ورود اطلاعات پرسنل",
     description:
-      "هر کارت یک KPI و یک دوره مشخص است. ثبت داده با موبایل کمتر از سه دقیقه زمان می‌گیرد.",
+      "هر کارت یک شاخص عملکرد و یک دورهٔ مشخص است. ثبت داده با موبایل کمتر از سه دقیقه زمان می‌گیرد.",
     kind: "board",
     board: "checkins",
   },
   "/checkins/review": {
     path: "/checkins/review",
-    title: "بررسی داده‌های KPI",
+    title: "بررسی داده‌های شاخص‌های عملکرد",
     eyebrow: "گردش‌کار داده",
     description:
       "ثبت‌ها را بررسی کنید؛ ثبت‌کننده اجازهٔ تأیید دادهٔ خودش را ندارد.",
@@ -347,7 +347,7 @@ const catalog: Record<string, RoutePage> = {
     headline: "اقدام‌ها را قابل سنجش نگه دارید",
     eyebrow: "بستن حلقه کنترل",
     description:
-      "هر اقدام باید مسئول، موعد و معیار موفقیت داشته باشد تا اثر آن روی KPI دیده شود.",
+      "هر اقدام باید مسئول، موعد و معیار موفقیت داشته باشد تا اثر آن بر شاخص عملکرد دیده شود.",
     kind: "board",
     board: "actions",
     actionLabel: "اقدام جدید",
@@ -372,7 +372,7 @@ const catalog: Record<string, RoutePage> = {
   },
   "/sms-ippanel-hub": {
     path: "/sms-ippanel-hub",
-    title: "درگاه پیامک IPPanel",
+    title: "درگاه پیامک آی‌پی‌پنل",
     eyebrow: "مدیریت ماژول",
     description: "تنظیمات اتصال، اعتبار حساب و ارسال آزمایشی پیامک.",
     kind: "settings",
@@ -401,8 +401,8 @@ export function getRoutePage(segments: string[] = []): RoutePage | null {
   if (/^\/formulas\/\d+$/.test(path))
     return {
       path,
-      title: "KPI مشتق‌شده",
-      eyebrow: "Formula Studio",
+      title: "شاخص عملکرد مشتق‌شده",
+      eyebrow: "استودیوی فرمول‌ها",
       description: "محاسبه و بررسی ریزدانهٔ نسخهٔ انتخاب‌شده.",
       kind: "table",
     };
@@ -411,13 +411,13 @@ export function getRoutePage(segments: string[] = []): RoutePage | null {
       path,
       title: "جزئیات مرور مدیریتی",
       eyebrow: "گزارش مدیریتی",
-      description: "snapshot، انتشار و جمع‌بندی جلسه را مدیریت کنید.",
+      description: "تصویر ثبت‌شده، انتشار و جمع‌بندی جلسه را مدیریت کنید.",
       kind: "table",
     };
   if (/^\/kpis\/[^/]+\/data$/.test(path))
     return {
       path,
-      title: "ثبت داده KPI",
+      title: "ثبت دادهٔ شاخص عملکرد",
       eyebrow: "گردش گزارش",
       description: "مقدار و شواهد این دوره را ثبت کنید.",
       kind: "table",
@@ -436,7 +436,7 @@ export function getRoutePage(segments: string[] = []): RoutePage | null {
   if (/^\/kpis\/[^/]+\/history$/.test(path))
     return {
       path,
-      title: "تاریخچه KPI",
+      title: "تاریخچهٔ شاخص عملکرد",
       eyebrow: "نسخه و دادهٔ مصوب",
       description: "نسخه‌های تعریف و داده‌های تأییدشدهٔ شاخص را مرور کنید.",
       kind: "table",

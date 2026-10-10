@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthContext } from "@/contexts/auth-context";
 import { apiFetch, parseApiBody } from "@/lib/api";
 
 function faNum(value: unknown) {
@@ -592,6 +593,7 @@ function preferred(options: KpiOption[], slug: string) {
 
 export function KpiCreateButton() {
   const router = useRouter();
+  const { can, isLoading } = useAuthContext();
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<KpiFormCatalog | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -619,11 +621,11 @@ export function KpiCreateButton() {
         await response.json().catch(() => ({})),
       );
       if (!response.ok || !parsed.payload)
-        throw new Error(parsed.message ?? "فرم ساخت KPI آماده نشد.");
+        throw new Error(parsed.message ?? "فرم ساخت شاخص عملکرد آماده نشد.");
       setCatalog(parsed.payload);
     } catch (error) {
       setLoadError(
-        error instanceof Error ? error.message : "فرم ساخت KPI آماده نشد.",
+        error instanceof Error ? error.message : "فرم ساخت شاخص عملکرد آماده نشد.",
       );
     }
   };
@@ -657,7 +659,7 @@ export function KpiCreateButton() {
       router.refresh();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "ساخت KPI انجام نشد.",
+        error instanceof Error ? error.message : "ساخت شاخص عملکرد انجام نشد.",
       );
     } finally {
       setBusy(false);
@@ -681,6 +683,7 @@ export function KpiCreateButton() {
   )
     ? catalog.actorId
     : "";
+  if (isLoading || !can("kpi.create")) return null;
   return (
     <>
       <button
@@ -690,7 +693,7 @@ export function KpiCreateButton() {
           void openModal();
         }}
       >
-        <span>ساخت KPI</span>
+        <span>ساخت شاخص عملکرد</span>
         <em className="icon ni ni-plus" />
       </button>
       {open && (
@@ -715,7 +718,7 @@ export function KpiCreateButton() {
             >
               <em className="icon ni ni-cross" />
             </button>
-            <h2 id="kpi-create-title">تعریف KPI جدید</h2>
+            <h2 id="kpi-create-title">تعریف شاخص عملکرد جدید</h2>
             <p className="sm-kpi-modal-lead">
               یک نسخه اولیه ساخته می‌شود و ثبت‌های گذشته را تغییر نمی‌دهد.
             </p>
@@ -735,7 +738,7 @@ export function KpiCreateButton() {
                       <span className="req" aria-hidden="true">
                         *
                       </span>
-                      نام KPI
+                      نام شاخص
                     </label>
                     <input
                       id="kpi-name"
@@ -748,7 +751,7 @@ export function KpiCreateButton() {
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="kpi-business-unit">
-                      واحد سازمانی / Business Unit
+                      واحد سازمانی
                     </label>
                     <select
                       id="kpi-business-unit"
@@ -899,7 +902,7 @@ export function KpiCreateButton() {
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="kpi-owner">
-                      مالک KPI
+                      مالک شاخص
                     </label>
                     <select
                       id="kpi-owner"
@@ -922,7 +925,7 @@ export function KpiCreateButton() {
                 </p>
                 {catalog.businessUnits.length === 0 && (
                   <p role="alert" className="text-danger mt-3 mb-0">
-                    این KPI در شرکت {catalog.company.name} ثبت می‌شود؛ می‌توانید
+                    این شاخص در شرکت {catalog.company.name} ثبت می‌شود؛ می‌توانید
                     آن را در سطح شرکت نگه دارید.
                   </p>
                 )}
@@ -938,7 +941,7 @@ export function KpiCreateButton() {
                     disabled={busy}
                   >
                     <em className="icon ni ni-arrow-left" />
-                    <span>{busy ? "در حال ساخت…" : "ساخت KPI"}</span>
+                    <span>{busy ? "در حال ساخت…" : "ساخت شاخص عملکرد"}</span>
                   </button>
                   <button
                     type="button"
@@ -947,6 +950,290 @@ export function KpiCreateButton() {
                   >
                     انصراف
                   </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+type ActionChoice = { id: string; name: string; businessUnitId?: string | null };
+type ActionPerson = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  mobile: string;
+  businessUnitId: string | null;
+};
+type ActionFormCatalog = {
+  actorId: string;
+  company: { id: string; name: string } | null;
+  businessUnits: { id: string; name: string }[];
+  people: ActionPerson[];
+  priorities: { id: string; name: string }[];
+  sources: {
+    kpis: ActionChoice[];
+    redFlags: ActionChoice[];
+    decisions: ActionChoice[];
+  };
+};
+
+const actionSourceLabels: Record<string, string> = {
+  kpi: "شاخص عملکرد",
+  redflag: "هشدار قرمز",
+  decision: "تصمیم مدیریتی",
+};
+
+export function ActionCreateButton() {
+  const router = useRouter();
+  const { can, isLoading } = useAuthContext();
+  const [open, setOpen] = useState(false);
+  const [catalog, setCatalog] = useState<ActionFormCatalog | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [businessUnitId, setBusinessUnitId] = useState("");
+  const [sourceType, setSourceType] = useState("");
+  const [sourceId, setSourceId] = useState("");
+  const [ownerUserId, setOwnerUserId] = useState("");
+  const [approverUserId, setApproverUserId] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, busy]);
+
+  const openModal = async () => {
+    setOpen(true);
+    setMessage("");
+    setLoadError("");
+    setBusinessUnitId("");
+    setSourceType("");
+    setSourceId("");
+    setOwnerUserId("");
+    setApproverUserId("");
+    setCatalog(null);
+    try {
+      const response = await apiFetch("/api/actions/create-form", {
+        credentials: "same-origin",
+        headers: { accept: "application/json", "accept-language": "fa" },
+      });
+      const parsed = parseApiBody<ActionFormCatalog>(
+        await response.json().catch(() => ({})),
+      );
+      if (!response.ok || !parsed.payload)
+        throw new Error(parsed.message ?? "اطلاعات فرم اقدام دریافت نشد.");
+      setCatalog(parsed.payload);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "اطلاعات فرم اقدام دریافت نشد.",
+      );
+    }
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    setBusy(true);
+    setMessage("");
+    try {
+      await send("/api/actions", "POST", {
+        businessUnitId: Number(data.get("businessUnitId")),
+        ...(sourceType
+          ? {
+              sourceType,
+              sourceId: Number(data.get("sourceId")),
+            }
+          : {}),
+        title: String(data.get("title") ?? "").trim(),
+        description: String(data.get("description") ?? "").trim(),
+        successMetric: String(data.get("successMetric") ?? "").trim(),
+        baseline: data.get("baseline") ? Number(data.get("baseline")) : null,
+        target: data.get("target") ? Number(data.get("target")) : null,
+        ownerUserId: Number(data.get("ownerUserId")),
+        approverUserId: Number(data.get("approverUserId")),
+        priority: String(data.get("priority") ?? ""),
+        dueAt: String(data.get("dueAt") ?? "").trim(),
+        evaluationDueAt: String(data.get("evaluationDueAt") ?? "").trim(),
+      });
+      setOpen(false);
+      form.reset();
+      setBusinessUnitId("");
+      setSourceType("");
+      setSourceId("");
+      setOwnerUserId("");
+      setApproverUserId("");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "ثبت اقدام انجام نشد.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const people = (catalog?.people ?? []).filter(
+    (person) => !businessUnitId || person.businessUnitId === businessUnitId,
+  );
+  const sources =
+    sourceType === "kpi"
+      ? (catalog?.sources.kpis ?? [])
+      : sourceType === "redflag"
+        ? (catalog?.sources.redFlags ?? [])
+        : sourceType === "decision"
+          ? (catalog?.sources.decisions ?? [])
+          : [];
+  const unitSources = sources.filter(
+    (source) => !source.businessUnitId || source.businessUnitId === businessUnitId,
+  );
+
+  if (isLoading || !can("action.create")) return null;
+  return (
+    <>
+      <button type="button" className="btn btn-primary" onClick={() => void openModal()}>
+        <span>اقدام جدید</span>
+        <em className="icon ni ni-plus" />
+      </button>
+      {open && (
+        <div className="sm-kpi-modal-root" role="presentation">
+          <button
+            type="button"
+            className="sm-kpi-modal-backdrop"
+            aria-label="بستن پنجره"
+            onClick={() => !busy && setOpen(false)}
+          />
+          <div
+            className="sm-kpi-modal sm-action-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="action-create-title"
+          >
+            <button
+              type="button"
+              className="close"
+              aria-label="بستن"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+            >
+              <em className="icon ni ni-cross" />
+            </button>
+            <h2 id="action-create-title">ساخت کارت اقدام</h2>
+            <p className="sm-kpi-modal-lead">
+              اقدام پس از تعیین مسئول، موعد و معیار موفقیت ثبت می‌شود و برای اجرا به تأیید نیاز دارد.
+            </p>
+            {loadError && <p role="alert" className="text-danger">{loadError}</p>}
+            {!catalog && !loadError && <p className="text-soft">در حال دریافت اطلاعات فرم…</p>}
+            {catalog && (
+              <form onSubmit={submit}>
+                <div className="sm-kpi-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-company">شرکت</label>
+                    <input id="action-company" className="form-control" value={catalog.company?.name ?? "شرکت فعال"} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-unit"><span className="req">*</span>واحد کسب‌وکار</label>
+                    <select id="action-unit" className="form-select" name="businessUnitId" required value={businessUnitId} onChange={(event) => {
+                      setBusinessUnitId(event.target.value);
+                      setSourceId("");
+                      setOwnerUserId("");
+                      setApproverUserId("");
+                    }}>
+                      <option value="">انتخاب واحد</option>
+                      {catalog.businessUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-title"><span className="req">*</span>عنوان اقدام</label>
+                    <input id="action-title" className="form-control" name="title" required maxLength={240} placeholder="مثلاً پیگیری تبدیل سرنخ‌های فروش" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-source-type">منشأ اقدام</label>
+                    <select id="action-source-type" className="form-select" value={sourceType} onChange={(event) => {
+                      setSourceType(event.target.value);
+                      setSourceId("");
+                    }}>
+                      <option value="">بدون پیوند به رکورد دیگر</option>
+                      {Object.entries(actionSourceLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                    </select>
+                  </div>
+                  {sourceType && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="action-source-record">{actionSourceLabels[sourceType]}</label>
+                      <select id="action-source-record" className="form-select" name="sourceId" required value={sourceId} onChange={(event) => setSourceId(event.target.value)}>
+                        <option value="">انتخاب رکورد</option>
+                        {unitSources.map((source) => <option key={source.id} value={source.id}>{source.name.slice(0, 140)}</option>)}
+                      </select>
+                      {unitSources.length === 0 && <small className="text-soft">برای این واحد رکورد قابل پیوندی در دسترس نیست.</small>}
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-owner"><span className="req">*</span>مسئول اجرا</label>
+                    <select id="action-owner" className="form-select" name="ownerUserId" required value={ownerUserId} onChange={(event) => {
+                      setOwnerUserId(event.target.value);
+                      if (event.target.value === approverUserId) setApproverUserId("");
+                    }}>
+                      <option value="">انتخاب مسئول</option>
+                      {people.map((person) => <option key={person.id} value={person.id}>{personLabel(person)}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-approver"><span className="req">*</span>تأییدکننده</label>
+                    <select id="action-approver" className="form-select" name="approverUserId" required value={approverUserId} onChange={(event) => setApproverUserId(event.target.value)}>
+                      <option value="">انتخاب تأییدکننده</option>
+                      {people.filter((person) => person.id !== ownerUserId).map((person) => <option key={person.id} value={person.id}>{personLabel(person)}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-deadline"><span className="req">*</span>موعد</label>
+                    <input id="action-deadline" className="form-control" name="dueAt" required inputMode="numeric" dir="ltr" placeholder="۱۴۰۵/۰۱/۰۱" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-priority">اولویت</label>
+                    <select id="action-priority" className="form-select" name="priority" required defaultValue="">
+                      <option value="">انتخاب اولویت</option>
+                      {catalog.priorities.map((priority) => <option key={priority.id} value={priority.name}>{priority.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-success"><span className="req">*</span>معیار موفقیت</label>
+                    <input id="action-success" className="form-control" name="successMetric" required maxLength={240} placeholder="مثلاً رسیدن به ۷۰٪ هدف" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-evaluation-date"><span className="req">*</span>تاریخ ارزیابی نتیجه</label>
+                    <input id="action-evaluation-date" className="form-control" name="evaluationDueAt" required inputMode="numeric" dir="ltr" placeholder="۱۴۰۵/۰۲/۰۱" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-baseline">مقدار مبنا (در صورت نیاز)</label>
+                    <input id="action-baseline" className="form-control" name="baseline" type="number" step="any" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="action-target">مقدار هدف (در صورت نیاز)</label>
+                    <input id="action-target" className="form-control" name="target" type="number" step="any" />
+                  </div>
+                  <div className="form-group sm-action-description">
+                    <label className="form-label" htmlFor="action-description">شرح و گام‌های اجرا</label>
+                    <textarea id="action-description" className="form-control" name="description" maxLength={2000} rows={4} placeholder="گام‌های اصلی اجرا، وابستگی‌ها یا موانع احتمالی…" />
+                  </div>
+                </div>
+                <p className="sm-kpi-modal-note">
+                  اقدام ابتدا در وضعیت «پیشنهادی» ثبت می‌شود. مسئول پس از اجرا، پیشرفت و شواهد را می‌فرستد؛ تکمیل ۱۰۰٪ به‌تنهایی اقدام را نمی‌بندد و تأییدکننده باید پایان کار را تصویب کند.
+                </p>
+                {!catalog.businessUnits.length && <p role="alert" className="text-danger">واحد کسب‌وکار مجاز برای ثبت اقدام در این شرکت وجود ندارد.</p>}
+                {!people.length && <p role="alert" className="text-danger">عضو فعالی در واحدهای مجاز پیدا نشد.</p>}
+                {message && <p role="alert" className="text-danger">{message}</p>}
+                <div className="sm-kpi-modal-actions">
+                  <button className="btn btn-primary" type="submit" disabled={busy || !catalog.businessUnits.length || !people.length}>
+                    <em className="icon ni ni-arrow-left" />
+                    <span>{busy ? "در حال ثبت…" : "ثبت اقدام"}</span>
+                  </button>
+                  <button type="button" className="sm-kpi-modal-cancel" disabled={busy} onClick={() => setOpen(false)}>انصراف</button>
                 </div>
               </form>
             )}
@@ -976,6 +1263,13 @@ const healthLabel: Record<string, string> = {
   yellow: "زرد",
   red: "قرمز",
   unknown: "بدون داده",
+};
+const statusLabel: Record<string, string> = {
+  published: "منتشرشده",
+  draft: "پیش‌نویس",
+  pending: "در انتظار بررسی",
+  approved: "تأییدشده",
+  rejected: "ردشده",
 };
 
 export function KpiStudioTable({
@@ -1007,7 +1301,7 @@ export function KpiStudioTable({
           <input
             type="search"
             value={query}
-            placeholder="جستجو در KPIها یا واحد..."
+            placeholder="جستجو در شاخص‌ها یا واحد..."
             onChange={(event) => {
               setQuery(event.target.value);
               setPage(1);
@@ -1017,12 +1311,12 @@ export function KpiStudioTable({
         </label>
         <span className="sm-kpi-count">
           <i className={`sm-legend-dot ${activeCount ? "is-green" : ""}`} />
-          KPI فعال {faNum(activeCount)}
+          شاخص فعال {faNum(activeCount)}
         </span>
       </div>
       <div className="card card-bordered sm-kpi-table">
         <div className="sm-kpi-head">
-          <span>نام KPI</span>
+          <span>نام شاخص</span>
           <span>واحد</span>
           <span>هدف</span>
           <span>آخرین وضعیت</span>
@@ -1048,7 +1342,7 @@ export function KpiStudioTable({
                 </span>
                 <span>{row.owner}</span>
                 <span>
-                  {faNum(row.version)} · {row.status ?? "published"}
+                  {faNum(row.version)} · {statusLabel[row.status ?? "published"] ?? row.status ?? "—"}
                 </span>
               </article>
             );

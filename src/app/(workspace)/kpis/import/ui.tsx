@@ -16,8 +16,8 @@ import { apiFetch, parseApiBody } from "@/lib/api";
 const MAX_FILE_BYTES = 1_048_576;
 const fields = [
   { key: "externalid", label: "شناسهٔ خارجی", defaultValue: "externalId" },
-  { key: "kpicode", label: "کد KPI", defaultValue: "kpiCode" },
-  { key: "period", label: "دوره (YYYY-MM)", defaultValue: "period" },
+  { key: "kpicode", label: "کد شاخص عملکرد", defaultValue: "kpiCode" },
+  { key: "period", label: "دوره (سال-ماه)", defaultValue: "period" },
   { key: "value", label: "مقدار", defaultValue: "value" },
   { key: "unit", label: "واحد", defaultValue: "unit" },
   { key: "source", label: "منبع", defaultValue: "source" },
@@ -185,65 +185,70 @@ export function KpiImportClient() {
   }
 
   return (
-    <div dir="rtl" className="space-y-6">
+    <div dir="rtl" className="sm-kpi-import-page">
       <section className="rounded-xl border border-brand-line bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5">
           <h1 className="text-lg font-semibold text-brand-ink">
-            واردسازی داده‌های KPI
+            واردسازی داده‌های شاخص عملکرد
           </h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 text-sm leading-6 text-brand-muted">
             فایل CSV یا XLSX را انتخاب کنید. هر ردیف پیش از ثبت با شرکت فعال، کد
-            KPI، دوره و واحد سنجیده می‌شود.
+            شناسهٔ شاخص، دوره و واحد سنجیده می‌شود.
           </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+        <div className="sm-kpi-import-grid grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
           <div className="space-y-3">
-            <label
-              htmlFor="kpi-import-file"
+            <p
+              id="kpi-import-file-label"
               className="block text-sm font-medium text-brand-ink"
             >
               فایل ورودی
-            </label>
-            <Input
-              id="kpi-import-file"
-              type="file"
-              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={(event) => {
-                const selected = event.currentTarget.files?.[0] ?? null;
-                setError("");
-                setPreview(null);
-                setResult(null);
-                if (selected && selected.size > MAX_FILE_BYTES) {
-                  setFile(null);
-                  event.currentTarget.value = "";
-                  setError("حجم فایل نباید بیشتر از ۱ مگابایت باشد.");
-                  return;
-                }
-                setFile(selected);
-              }}
-            />
-            <p className="text-xs text-slate-500">
-              حداکثر ۱ مگابایت و ۲۰۰ ردیف داده؛ فایل‌های Excel با پسوند XLSX
+            </p>
+            <div className="sm-kpi-import-file-picker">
+              <Input
+                id="kpi-import-file"
+                type="file"
+                className="sm-kpi-import-native-input"
+                aria-labelledby="kpi-import-file-label"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={(event) => {
+                  const selected = event.currentTarget.files?.[0] ?? null;
+                  setError("");
+                  setPreview(null);
+                  setResult(null);
+                  if (selected && selected.size > MAX_FILE_BYTES) {
+                    setFile(null);
+                    event.currentTarget.value = "";
+                    setError("حجم فایل نباید بیشتر از ۱ مگابایت باشد.");
+                    return;
+                  }
+                  setFile(selected);
+                }}
+              />
+              <label htmlFor="kpi-import-file" className="sm-kpi-import-file-button">
+                انتخاب فایل
+              </label>
+              <span aria-live="polite" className="sm-kpi-import-file-name">
+                {file?.name ?? "فایلی انتخاب نشده است"}
+              </span>
+            </div>
+            <p className="text-xs text-brand-muted">
+              حداکثر ۱ مگابایت و ۲۰۰ ردیف داده؛ فایل‌های اکسل با پسوند XLSX
               پذیرفته می‌شوند.
             </p>
-            {file && (
-              <p className="text-sm text-slate-700">
-                فایل انتخاب‌شده: {file.name}
-              </p>
-            )}
           </div>
 
           <div>
             <h2 className="mb-3 text-sm font-medium text-brand-ink">
               نگاشت نام ستون‌ها
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm-kpi-import-mapping grid gap-3 sm:grid-cols-2">
               {fields.map((field) => (
                 <label
                   key={field.key}
                   htmlFor={`kpi-import-column-${field.key}`}
-                  className="space-y-1 text-xs text-slate-600"
+                  className="space-y-1 text-xs text-brand-muted"
                 >
                   <span>{field.label}</span>
                   <Input
@@ -286,7 +291,7 @@ export function KpiImportClient() {
         {error && (
           <p
             role="alert"
-            className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+            className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {error}
           </p>
@@ -298,7 +303,7 @@ export function KpiImportClient() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="font-semibold text-brand-ink">نتیجهٔ اعتبارسنجی</h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-brand-muted">
                 {preview.rowCount} ردیف · {preview.validRows.length} ردیف معتبر
                 · {preview.issues.length} ایراد
               </p>
@@ -315,7 +320,7 @@ export function KpiImportClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>ردیف</TableHead>
-                  <TableHead>کد KPI</TableHead>
+                  <TableHead>کد شاخص</TableHead>
                   <TableHead>دوره</TableHead>
                   <TableHead>مقدار</TableHead>
                   <TableHead>واحد</TableHead>
@@ -337,7 +342,7 @@ export function KpiImportClient() {
             </Table>
           )}
           {preview.validRows.length > 20 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-brand-muted">
               ۲۰ ردیف اول نمایش داده شده‌اند؛ همهٔ {preview.validRows.length} ردیف
               معتبر هنگام ثبت پردازش می‌شوند.
             </p>
@@ -352,7 +357,7 @@ export function KpiImportClient() {
                 {preview.issues.map((issue, index) => (
                   <li
                     key={`${issue.rowNumber}-${issue.field}-${index}`}
-                    className="px-4 py-2 text-slate-700"
+                    className="px-4 py-2 text-brand-ink"
                   >
                     ردیف {issue.rowNumber} · {issue.field}: {issue.message}
                   </li>
@@ -393,7 +398,7 @@ export function KpiImportClient() {
             <h2 className="font-semibold text-brand-ink">
               تاریخچهٔ واردسازی‌های من
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-brand-muted">
               فقط اجراهای شما در شرکت فعال نمایش داده می‌شود.
             </p>
           </div>
@@ -408,7 +413,7 @@ export function KpiImportClient() {
           </Button>
         </div>
         {runs.length === 0 ? (
-          <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-lg bg-brand-canvas px-4 py-6 text-center text-sm text-brand-muted">
             {loadingRuns
               ? "در حال بارگیری تاریخچه…"
               : "هنوز واردسازی‌ای ثبت نشده است."}

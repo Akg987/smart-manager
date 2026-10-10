@@ -9,7 +9,10 @@ function Table({ className, ...props }: ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn(
+          "w-full caption-bottom text-sm text-brand-ink",
+          className,
+        )}
         {...props}
       />
     </div>
@@ -41,7 +44,7 @@ function TableRow({ className, ...props }: ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-neutral-100 transition-colors hover:bg-neutral-50",
+        "border-b border-brand-line/70 transition-colors hover:bg-brand-canvas/70",
         className,
       )}
       {...props}
@@ -54,7 +57,7 @@ function TableHead({ className, ...props }: ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-11 px-4 text-right align-middle font-medium whitespace-nowrap text-neutral-500",
+        "h-11 px-4 text-right align-middle font-medium whitespace-nowrap text-brand-muted",
         className,
       )}
       {...props}

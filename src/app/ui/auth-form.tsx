@@ -114,7 +114,7 @@ export function DemoForm({
         setMessage(
           parsed.message ??
             (response.status >= 500
-              ? "سرویس در دسترس نیست. API را روی پورت ۴۰۰۰ اجرا کنید."
+              ? "سرویس در دسترس نیست. رابط برنامه‌نویسی را روی درگاه ۴۰۰۰ اجرا کنید."
               : "درخواست انجام نشد."),
         );
         return;
@@ -226,7 +226,7 @@ export function DemoForm({
           ) : (
             <input
               id={field.name}
-              className={`h-11 w-full rounded-md border border-brand-line bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus-visible:border-brand-copper focus-visible:ring-4 focus-visible:ring-brand-copper/10 ${field.type === "tel" || field.name.includes("code") || field.name.includes("national") ? "text-center" : ""}`}
+              className={`h-11 w-full rounded-md border border-brand-line bg-white px-3 text-sm outline-none placeholder:text-brand-muted/70 focus-visible:border-brand-copper focus-visible:ring-4 focus-visible:ring-brand-copper/10 ${field.type === "tel" || field.name.includes("code") || field.name.includes("national") ? "text-center" : ""}`}
               dir={
                 field.type === "tel" ||
                 field.name.includes("code") ||
@@ -295,7 +295,7 @@ export function DemoForm({
       <div>
         <Button
           type="submit"
-          className="h-11 w-full bg-brand-copper text-white hover:bg-brand-muted"
+          className="h-11 w-full bg-brand-copper text-white hover:bg-brand-copper-hover"
           disabled={disabled || busy || !endpoint}
         >
           {busy ? "در حال ارسال…" : submitLabel}
@@ -326,7 +326,7 @@ export function AuthFrame({
           src="/images/logo.png"
           alt="اسمارت منیجر"
         />
-        <span className="text-xs font-semibold tracking-[0.25em] text-brand-gold">SMART MANAGER</span>
+        <span className="text-xs font-semibold tracking-[0.25em] text-brand-gold">اسمارت منیجر</span>
         <h1 className="mt-5 max-w-lg text-4xl font-bold leading-tight">هسته مدیریت هوشمند سازمان شما</h1>
         <p className="mt-4 max-w-lg text-base leading-8 text-white/70">
           ورود، کاربران، دسترسی‌ها و ماژول‌ها در یک فضای واحد با هویت اسمارت

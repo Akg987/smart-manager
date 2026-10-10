@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Can } from "@/contexts/auth-context";
 import {
   Table,
   TableBody,
@@ -306,7 +307,7 @@ async function Dashboard() {
             <StatCard
               href="/kpis"
               tone="orange"
-              label="KPI نیازمند توجه"
+              label="شاخص عملکرد نیازمند توجه"
               value={attentionLabel}
               detail={`${faNum(staleCount)} شاخص کهنه، ${faNum(missingCount)} شاخص بدون داده`}
             />
@@ -335,7 +336,7 @@ async function Dashboard() {
                 <div className="card-inner">
                   <div className="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                      <span className="overline-title">سلامت سبد KPI</span>
+                      <span className="overline-title">سلامت سبد شاخص‌های عملکرد</span>
                       <h6 className="title mb-0">روند هشت ثبت اخیر</h6>
                     </div>
                     <span
@@ -523,7 +524,7 @@ async function CollectionTable({
   if (!definition)
     return (
       <div className="card card-bordered">
-        <div className="card-inner text-soft">این فهرست در API موجود نیست.</div>
+        <div className="card-inner text-soft">این فهرست از طریق رابط برنامه‌نویسی در دسترس نیست.</div>
       </div>
     );
   const result = await serverApi<RecordValue[]>(`data/${definition.api}`);
@@ -553,12 +554,7 @@ async function CollectionTable({
                   {definition.keys.map((key) => (
                     <TableCell key={key}>
                       {collection === "access-levels" && key === "name" ? (
-                        <Link
-                          href={`/admin/access-levels/${row.id}/edit`}
-                          className="text-blue-700 underline-offset-4 hover:underline"
-                        >
-                          {format(row.name)}
-                        </Link>
+                        format(row.name)
                       ) : (
                         format(
                           key === "fullName"
@@ -572,10 +568,9 @@ async function CollectionTable({
                   ))}
                   {collection === "modules" && (
                     <TableCell>
-                      <ModuleToggle
-                        slug={String(row.slug)}
-                        active={row.isActive === true}
-                      />
+                      <Can permission="integration.manage">
+                        <ModuleToggle slug={String(row.slug)} active={row.isActive === true} />
+                      </Can>
                     </TableCell>
                   )}
                 </TableRow>
@@ -584,7 +579,7 @@ async function CollectionTable({
                 <TableRow>
                   <TableCell
                     colSpan={definition.labels.length}
-                    className="py-5 text-center text-neutral-500"
+                    className="py-5 text-center text-brand-muted"
                   >
                     {result.error
                       ? "برای این حساب داده‌ای در دسترس نیست."
@@ -603,12 +598,14 @@ async function CollectionTable({
 async function AccessLevelsPanel() {
   return (
     <>
-      <div className="flex justify-end mb-3">
-        <Link href="/admin/access-levels/create" className="btn btn-primary">
-          ساخت سطح دسترسی
-        </Link>
-      </div>
-      <CollectionTable collection="access-levels" label="سطح‌های دسترسی" />
+      <Can permission="roles.manage">
+        <div className="flex justify-end mb-3">
+          <Link href="/admin/access-levels/create" className="btn btn-primary">
+            ساخت سطح دسترسی
+          </Link>
+        </div>
+      </Can>
+      <CollectionTable collection="access-levels" label="سطوح دسترسی" />
     </>
   );
 }
@@ -638,7 +635,11 @@ async function FormPage({
         name: "direction",
         label: "جهت مطلوب",
         type: "select",
-        options: ["higher", "lower", "range"],
+        options: [
+          { value: "higher", label: "مقدار بیشتر بهتر است" },
+          { value: "lower", label: "مقدار کمتر بهتر است" },
+          { value: "range", label: "بازهٔ مطلوب" },
+        ],
         required: true,
       },
       {
@@ -680,18 +681,18 @@ async function FormPage({
         label: "نوع ورودی",
         type: "select",
         options: [
-          "direct",
-          "numeric",
-          "percentage",
-          "currency",
-          "count",
-          "ratio",
-          "text",
-          "textarea",
-          "select",
-          "multi-select",
-          "formula",
-          "descriptive",
+          { value: "direct", label: "مقدار مستقیم" },
+          { value: "numeric", label: "عدد" },
+          { value: "percentage", label: "درصد" },
+          { value: "currency", label: "مبلغ" },
+          { value: "count", label: "شمارش" },
+          { value: "ratio", label: "نسبت" },
+          { value: "text", label: "متن" },
+          { value: "textarea", label: "متن چندخطی" },
+          { value: "select", label: "انتخاب تکی" },
+          { value: "multi-select", label: "انتخاب چندگانه" },
+          { value: "formula", label: "فرمول" },
+          { value: "descriptive", label: "توصیفی" },
         ],
       },
       {
@@ -699,12 +700,12 @@ async function FormPage({
         label: "عملیات فرمول",
         type: "select",
         options: [
-          "sum",
-          "average",
-          "product",
-          "difference",
-          "ratio",
-          "percentage",
+          { value: "sum", label: "مجموع" },
+          { value: "average", label: "میانگین" },
+          { value: "product", label: "حاصل‌ضرب" },
+          { value: "difference", label: "تفاضل" },
+          { value: "ratio", label: "نسبت" },
+          { value: "percentage", label: "درصد" },
         ],
       },
       {
@@ -714,7 +715,18 @@ async function FormPage({
       },
       { name: "rangeMinimum", label: "حداقل بازه", type: "number" },
       { name: "rangeMaximum", label: "حداکثر بازه", type: "number" },
-      { name: "reportingPeriod", label: "دوره گزارش", value: "monthly" },
+      {
+        name: "reportingPeriod",
+        label: "دوره گزارش",
+        type: "select",
+        value: "monthly",
+        options: [
+          { value: "weekly", label: "هفتگی" },
+          { value: "monthly", label: "ماهانه" },
+          { value: "quarterly", label: "فصلی" },
+          { value: "yearly", label: "سالانه" },
+        ],
+      },
       {
         name: "submissionDeadline",
         label: "آخرین مهلت گزارش (میلادی)",
@@ -763,7 +775,7 @@ async function FormPage({
       },
       {
         name: "approverUserId",
-        label: "Approver user ID",
+        label: "شناسه کاربری تأییدکننده",
         type: "number",
         required: true,
       },
@@ -781,7 +793,7 @@ async function FormPage({
       { name: "logoPath", label: "مسیر نشان" },
     ],
     sms: [
-      { name: "apiKey", label: "کلید API", type: "password" },
+      { name: "apiKey", label: "کلید رابط برنامه‌نویسی", type: "password" },
       { name: "sender", label: "شماره فرستنده", required: true },
     ],
     "profile-personal": [
@@ -795,25 +807,25 @@ async function FormPage({
       { name: "departmentId", label: "شناسه واحد (اختیاری)", type: "number" },
       {
         name: "permissions",
-        label: "مجوزها (با Ctrl انتخاب کنید)",
+        label: "مجوزها (برای انتخاب چند مورد از کلید کنترل استفاده کنید)",
         type: "multiselect",
         options: [
-          "manage-modules",
-          "manage-settings",
-          "manage-users",
-          "manage-roles",
-          "view-audit-log",
-          "manage-departments",
-          "access-all-departments",
-          "alerts.view",
-          "alerts.acknowledge",
-          "alerts.resolve",
-          "actions.view",
-          "actions.manage",
-          "actions.update-own",
-          "kpi.view",
-          "kpi.manage",
-          "kpi.submit",
+          { value: "manage-modules", label: "مدیریت ماژول‌ها" },
+          { value: "manage-settings", label: "مدیریت تنظیمات" },
+          { value: "manage-users", label: "مدیریت کاربران" },
+          { value: "manage-roles", label: "مدیریت نقش‌ها" },
+          { value: "view-audit-log", label: "مشاهدهٔ گزارش ممیزی" },
+          { value: "manage-departments", label: "مدیریت واحدها" },
+          { value: "access-all-departments", label: "دسترسی به همهٔ واحدها" },
+          { value: "alerts.view", label: "مشاهدهٔ هشدارها" },
+          { value: "alerts.acknowledge", label: "تأیید دریافت هشدارها" },
+          { value: "alerts.resolve", label: "رسیدگی به هشدارها" },
+          { value: "actions.view", label: "مشاهدهٔ اقدام‌ها" },
+          { value: "actions.manage", label: "مدیریت اقدام‌ها" },
+          { value: "actions.update-own", label: "ویرایش اقدام‌های خود" },
+          { value: "kpi.view", label: "مشاهدهٔ شاخص‌های عملکرد" },
+          { value: "kpi.manage", label: "مدیریت شاخص‌های عملکرد" },
+          { value: "kpi.submit", label: "ثبت دادهٔ شاخص‌های عملکرد" },
         ],
       },
     ],
@@ -941,7 +953,7 @@ async function FormPage({
     "settings-roles": "نقش‌ها و مجوزها",
     department: "واحد سازمانی",
     action: "اقدام",
-    checkin: "ثبت داده KPI",
+    checkin: "ثبت دادهٔ شاخص عملکرد",
     kpi: "تعریف شاخص",
     priority: "اولویت اقدام",
     sms: "تنظیمات پیامک",
@@ -963,7 +975,7 @@ async function FormPage({
           </>
         ) : (
           <p className="text-soft mt-3">
-            فرم این عملیات هنوز به مسیر API متصل نشده است.
+            فرم این عملیات هنوز به مسیر رابط برنامه‌نویسی متصل نشده است.
           </p>
         )}
       </div>
@@ -1046,9 +1058,11 @@ export async function WorkspacePage({
         page={page}
         action={
           page.actionLabel && createLink ? (
-            <Link href={createLink} className="btn btn-primary">
-              {page.actionLabel}
-            </Link>
+            <Can permission="roles.manage">
+              <Link href={createLink} className="btn btn-primary">
+                {page.actionLabel}
+              </Link>
+            </Can>
           ) : undefined
         }
       />

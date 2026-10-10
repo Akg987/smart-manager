@@ -15,7 +15,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/dashboard"
-        className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-brand-copper px-6 text-sm font-medium text-white transition-colors hover:bg-brand-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-copper focus-visible:ring-offset-2"
+        className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-brand-copper px-6 text-sm font-medium text-white transition-colors hover:bg-brand-copper-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-copper focus-visible:ring-offset-2"
       >
         بازگشت به داشبورد
       </Link>

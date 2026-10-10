@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Can } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, parseApiBody } from "@/lib/api";
@@ -20,10 +21,64 @@ const widgetTypes = [
   "data_quality",
   "company_scorecard",
 ];
-const card = "rounded-xl border bg-card p-5 text-card-foreground shadow-sm";
-const field = "w-full rounded-md border bg-background px-3 py-2 text-sm";
+const visibleWidgetType: Record<string, string> = {
+  kpi_card: "کارت شاخص عملکرد",
+  trend_chart: "نمودار روند",
+  line_chart: "نمودار خطی",
+  bar_chart: "نمودار میله‌ای",
+  comparison: "مقایسه",
+  progress: "پیشرفت",
+  table: "جدول",
+  red_flag_list: "فهرست پرچم‌های قرمز",
+  action_list: "فهرست اقدام‌ها",
+  decision_list: "فهرست تصمیم‌ها",
+  data_quality: "کیفیت داده",
+  company_scorecard: "کارنامه شرکت",
+};
+const visibleEnum: Record<string, string> = {
+  draft: "پیش‌نویس",
+  published: "منتشرشده",
+  pending: "در انتظار بررسی",
+  reviewed: "بازبینی‌شده",
+  submitted: "ثبت‌شده",
+  approved: "تأییدشده",
+  rejected: "ردشده",
+  proposed: "پیشنهادی",
+  completed: "تکمیل‌شده",
+  acknowledged: "دیده‌شده",
+  resolved: "رسیدگی‌شده",
+  active: "فعال",
+  inactive: "غیرفعال",
+  open: "باز",
+  closed: "بسته",
+  in_progress: "در حال اجرا",
+  result_review: "بازبینی نتیجه",
+  communicated: "ابلاغ‌شده",
+  cancelled: "لغوشده",
+  critical: "بحرانی",
+  high: "زیاد",
+  medium: "متوسط",
+  low: "کم",
+  severity: "شدت",
+  amount: "مبلغ",
+  duration: "مدت‌زمان",
+  delay: "تأخیر",
+  missing_data: "دادهٔ ثبت‌نشده",
+  data_missing: "دادهٔ ثبت‌نشده",
+  no_response: "بی‌پاسخی",
+  wbr: "مرور هفتگی",
+  mbr: "مرور ماهانه",
+};
+const card =
+  "rounded-xl border border-brand-line bg-card p-5 text-card-foreground shadow-sm";
+const field =
+  "w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-foreground outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60";
 const button =
-  "inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50";
+  "inline-flex min-h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+const outlineButton =
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-input bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+const compactOutlineButton =
+  "inline-flex min-h-8 items-center justify-center rounded-md border border-input bg-white px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 function rows(value: unknown): Row[] {
   if (Array.isArray(value)) return value as Row[];
@@ -60,7 +115,7 @@ function display(value: unknown) {
     ? "—"
     : typeof value === "object"
       ? JSON.stringify(value)
-      : String(value);
+      : (visibleEnum[String(value)] ?? String(value));
 }
 
 function useApi() {
@@ -222,7 +277,7 @@ function Dashboards() {
       ...v,
       {
         type: widgetType,
-        title: widgetType.replaceAll("_", " "),
+        title: visibleWidgetType[widgetType] ?? widgetType,
         config: selectedKpi
           ? { kpiIds: [selectedKpi], period: period || undefined }
           : {},
@@ -277,6 +332,7 @@ function Dashboards() {
   return (
     <div className="space-y-5" dir="rtl">
       <Feedback error={error} notice={notice} />
+      <Can permission="dashboard.create">
       <Panel
         title="ساخت داشبورد"
         action={
@@ -322,14 +378,14 @@ function Dashboards() {
             {widgets.map((w, i) => (
               <div
                 key={`size-${i}`}
-                className="flex items-center gap-2 rounded-md border p-2 text-xs"
+                className="flex items-center gap-2 rounded-md border border-brand-line p-2 text-xs"
               >
                 <span className="min-w-0 flex-1 truncate">{w.title}</span>
                 <label className="flex items-center gap-1">
                   عرض{" "}
                   <input
                     aria-label="عرض ویجت"
-                    className="w-14 rounded border px-1 py-1"
+                    className={`${field} w-14 px-1 py-1`}
                     type="number"
                     min={1}
                     max={12}
@@ -355,7 +411,7 @@ function Dashboards() {
                   ارتفاع{" "}
                   <input
                     aria-label="ارتفاع ویجت"
-                    className="w-14 rounded border px-1 py-1"
+                    className={`${field} w-14 px-1 py-1`}
                     type="number"
                     min={1}
                     max={12}
@@ -389,7 +445,7 @@ function Dashboards() {
           >
             {widgetTypes.map((t) => (
               <option key={t} value={t}>
-                {t}
+                {visibleWidgetType[t] ?? t}
               </option>
             ))}
           </select>
@@ -398,7 +454,7 @@ function Dashboards() {
             value={selectedKpi}
             onChange={(e) => setSelectedKpi(e.target.value)}
           >
-            <option value="">انتخاب KPI (اختیاری)</option>
+            <option value="">انتخاب شاخص عملکرد (اختیاری)</option>
             {kpis.map((k) => (
               <option key={id(k)} value={id(k)}>
                 {display(k.name)} · {display(k.code)}
@@ -412,7 +468,7 @@ function Dashboards() {
             placeholder="دوره مثل 1405-W02"
           />
           <button
-            className="rounded-md border px-3 py-2 text-sm"
+            className={outlineButton}
             type="button"
             onClick={addWidget}
           >
@@ -442,12 +498,14 @@ function Dashboards() {
           </div>
         )}
       </Panel>
+      </Can>
+      <Can permission="dashboard.view">
       <Panel title="داشبوردهای در دسترس">
         <ItemList items={items} />
         <div className="mt-3 flex flex-wrap gap-2">
           {items.map((item) => (
             <button
-              className="rounded border px-3 py-2 text-sm"
+              className={outlineButton}
               key={id(item)}
               onClick={() => void open(item)}
             >
@@ -456,25 +514,27 @@ function Dashboards() {
           ))}
         </div>
       </Panel>
+      </Can>
       {active && (
-        <Panel
+        <Can permission="dashboard.view">
+      <Panel
           title={`${display(active.name)} · ${mode}`}
           action={
             <div className="flex gap-2">
               <button
-                className="rounded border px-3 py-1 text-sm"
+                className={compactOutlineButton}
                 onClick={() => void open(active, "preview")}
               >
                 پیش‌نمایش
               </button>
               <button
-                className="rounded border px-3 py-1 text-sm"
+                className={compactOutlineButton}
                 onClick={() => void open(active, "edit")}
               >
                 ویرایش
               </button>
               <button
-                className="rounded border px-3 py-1 text-sm"
+                className={compactOutlineButton}
                 onClick={() => void duplicate()}
               >
                 تکثیر
@@ -487,7 +547,7 @@ function Dashboards() {
         >
           <div className="grid gap-3 md:grid-cols-2">
             {selectedWidgets.map((w, i) => (
-              <div className="rounded-lg border p-4" key={id(w) || i}>
+              <div className="rounded-lg border border-brand-line p-4" key={id(w) || i}>
                 <div className="font-medium">{display(w.title ?? w.type)}</div>
                 <pre className="mt-2 overflow-auto text-xs text-muted-foreground">
                   {JSON.stringify(w.data ?? w.config ?? {}, null, 2)}
@@ -495,7 +555,7 @@ function Dashboards() {
                 {mode === "edit" && (
                   <div className="mt-2 flex gap-2">
                     <button
-                      className="rounded border px-2 py-1 text-xs"
+                      className={compactOutlineButton}
                       onClick={() =>
                         setActive((a) =>
                           a
@@ -512,7 +572,7 @@ function Dashboards() {
                       حذف
                     </button>
                     <button
-                      className="rounded border px-2 py-1 text-xs"
+                      className={compactOutlineButton}
                       onClick={() => {
                         const next = [...selectedWidgets];
                         if (i > 0)
@@ -533,6 +593,7 @@ function Dashboards() {
             </button>
           )}
         </Panel>
+      </Can>
       )}
     </div>
   );
@@ -585,7 +646,8 @@ function Formulas() {
   return (
     <div className="space-y-5" dir="rtl">
       <Feedback error={error} notice={notice} />
-      <Panel title="Formula Studio · ساخت KPI مشتق‌شده">
+      <Can permission="formula.create">
+      <Panel title="استودیوی فرمول‌ها · ساخت شاخص عملکرد مشتق‌شده">
         <div className="grid gap-3 md:grid-cols-2">
           <input
             className={field}
@@ -631,11 +693,11 @@ function Formulas() {
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
-            className="rounded-md border px-4 py-2 text-sm"
+            className={outlineButton}
             disabled={busy || !formula}
             onClick={() => void validate()}
           >
-            اعتبارسنجی AST و منابع
+            اعتبارسنجی ساختار فرمول و منابع
           </button>
           <button
             className={button}
@@ -654,6 +716,8 @@ function Formulas() {
           </pre>
         )}
       </Panel>
+      </Can>
+      <Can permission="formula.view">
       <Panel title="شاخص‌های مشتق‌شده">
         <div className="divide-y">
           {items.map((item) => (
@@ -674,7 +738,7 @@ function Formulas() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={() =>
                     void call(`/api/formulas/${id(item)}/publish`, "POST", {})
                   }
@@ -689,7 +753,7 @@ function Formulas() {
                   onChange={(e) => setPeriod(e.target.value)}
                 />
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={() =>
                     void call(`/api/formulas/${id(item)}/calculate`, "POST", {
                       period,
@@ -699,7 +763,7 @@ function Formulas() {
                   محاسبه
                 </button>
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={async () => {
                     const v = await call(
                       `/api/formulas/${id(item)}/drilldown?period=${encodeURIComponent(period)}`,
@@ -719,6 +783,7 @@ function Formulas() {
           </p>
         )}
       </Panel>
+      </Can>
     </div>
   );
 }
@@ -750,15 +815,16 @@ function Reviews() {
   return (
     <div className="space-y-5" dir="rtl">
       <Feedback error={error} notice={notice} />
-      <Panel title="ساخت مرور مدیریتی WBR / MBR">
+      <Can permission="meeting.create">
+      <Panel title="ساخت مرور مدیریتی هفتگی یا ماهانه">
         <div className="grid gap-3 md:grid-cols-3">
           <select
             className={field}
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
-            <option value="wbr">WBR · هفتگی</option>
-            <option value="mbr">MBR · ماهانه</option>
+            <option value="wbr">هفتگی</option>
+            <option value="mbr">ماهانه</option>
           </select>
           <input
             className={field}
@@ -781,6 +847,8 @@ function Reviews() {
           ساخت پیش‌نویس
         </button>
       </Panel>
+      </Can>
+      <Can permission="meeting.view">
       <Panel title="جلسه‌ها و گزارش‌ها">
         <div className="divide-y">
           {items.map((item) => (
@@ -804,7 +872,7 @@ function Reviews() {
               </div>
               <div className="flex gap-2">
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={() =>
                     void call(
                       `/api/management-reviews/${id(item)}/publish`,
@@ -816,7 +884,7 @@ function Reviews() {
                   انتشار
                 </button>
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={() =>
                     void call(
                       `/api/management-reviews/${id(item)}/close`,
@@ -830,7 +898,7 @@ function Reviews() {
                   بستن
                 </button>
                 <button
-                  className="rounded border px-3 py-1 text-sm"
+                  className={compactOutlineButton}
                   onClick={async () => {
                     const v = await call(
                       `/api/management-reviews/${id(item)}/export`,
@@ -848,6 +916,7 @@ function Reviews() {
           <p className="text-sm text-muted-foreground">جلسه‌ای ثبت نشده است.</p>
         )}
       </Panel>
+      </Can>
     </div>
   );
 }
@@ -878,6 +947,7 @@ function Decisions() {
   return (
     <div className="space-y-5" dir="rtl">
       <Feedback error={error} notice={notice} />
+      <Can permission="decision.create">
       <Panel title="ثبت تصمیم">
         <textarea
           className={`${field} min-h-24`}
@@ -901,6 +971,8 @@ function Decisions() {
           </button>
         </div>
       </Panel>
+      </Can>
+      <Can permission="decision.view">
       <Panel title="پیگیری تصمیم‌ها">
         <div className="divide-y">
           {items.map((item) => (
@@ -950,6 +1022,7 @@ function Decisions() {
           ))}
         </div>
       </Panel>
+      </Can>
     </div>
   );
 }
@@ -1012,7 +1085,9 @@ function Automation() {
               "missing_data",
               "no_response",
             ].map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {visibleEnum[t] ?? t}
+              </option>
             ))}
           </select>
           <button
@@ -1029,7 +1104,7 @@ function Automation() {
             placeholder="دوره جاری (اختیاری)"
           />
           <button
-            className="rounded-md border px-4 py-2 text-sm"
+            className={outlineButton}
             disabled={busy}
             onClick={() =>
               void call(
@@ -1052,14 +1127,14 @@ function Automation() {
         </p>
         <div className="flex flex-wrap gap-2">
           <button
-            className="rounded border px-3 py-2 text-sm"
+            className={outlineButton}
             disabled={busy}
             onClick={() => void savePolicy("action", [-1440, 0, 1440])}
           >
             فعال‌سازی یادآوری اقدام
           </button>
           <button
-            className="rounded border px-3 py-2 text-sm"
+            className={outlineButton}
             disabled={busy}
             onClick={() => void savePolicy("decision", [-1440, 0, 1440])}
           >

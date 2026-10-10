@@ -3,6 +3,7 @@ import { serverApi } from "@/lib/api-server";
 import type { RoutePage } from "./route-catalog";
 import {
   ActionMoves,
+  ActionCreateButton,
   AlertDecisions,
   CheckinSubmit,
   KpiCreateButton,
@@ -67,6 +68,7 @@ type ActionCard = {
   progress: number;
 };
 type ActionBoard = {
+  canCreate?: boolean;
   proposed: ActionCard[];
   approved: ActionCard[];
   in_progress: ActionCard[];
@@ -112,6 +114,14 @@ const alertStatus: Record<string, string> = {
   open: "باز",
   acknowledged: "دیده‌شده",
   resolved: "بسته‌شده",
+};
+const priorityLabel: Record<string, string> = {
+  critical: "بحرانی",
+  high: "زیاد",
+  medium: "متوسط",
+  low: "کم",
+  urgent: "فوری",
+  normal: "عادی",
 };
 
 function Heading({
@@ -434,7 +444,9 @@ function ActionColumn({
             return (
               <article className="sm-action-card" key={card.id}>
                 <div className="sm-action-card-top">
-                  <span className="sm-priority-pill">{card.priority}</span>
+                <span className="sm-priority-pill">
+                  {priorityLabel[card.priority] ?? card.priority}
+                </span>
                   {card.overdue && (
                     <span className="badge badge-dim bg-danger">عقب‌افتاده</span>
                   )}
@@ -478,6 +490,7 @@ function ActionColumn({
 async function ActionsPage({ page }: { page: RoutePage }) {
   const result = await serverApi<ActionBoard>("actions/board");
   const board = result.data ?? {
+    canCreate: false,
     proposed: [],
     approved: [],
     in_progress: [],
@@ -491,12 +504,7 @@ async function ActionsPage({ page }: { page: RoutePage }) {
     <>
       <Heading
         page={page}
-        action={
-          <Link href="/actions/create" className="btn btn-primary">
-            <span>اقدام جدید</span>
-            <em className="icon ni ni-plus" />
-          </Link>
-        }
+        action={<ActionCreateButton />}
       />
       {result.error && (
         <div role="alert" className="alert alert-fill alert-warning mb-3">
@@ -505,19 +513,19 @@ async function ActionsPage({ page }: { page: RoutePage }) {
       )}
       <div className="sm-kanban">
         <ActionColumn title="پیشنهادی" cards={board.proposed} />
-        <ActionColumn title="Approved" cards={board.approved} />
+        <ActionColumn title="تأییدشده" cards={board.approved} />
         <ActionColumn title="در حال انجام" cards={board.in_progress} />
         <ActionColumn title="مسدود" cards={board.blocked} />
         <ActionColumn
-          title="Pending completion approval"
+          title="در انتظار تأیید تکمیل"
           cards={board.pending_completion_approval}
         />
         <ActionColumn title="انجام شده" cards={board.closed} />
         <ActionColumn
-          title="Historical done (unverified)"
+          title="انجام‌شده در گذشته (تأییدنشده)"
           cards={board.legacy_done}
         />
-        <ActionColumn title="Canceled" cards={board.canceled} />
+        <ActionColumn title="لغوشده" cards={board.canceled} />
       </div>
     </>
   );
